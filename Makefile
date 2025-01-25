@@ -8,8 +8,8 @@ setup:
 	conda create -n ${CONDA_ENV_NAME} python=${PYTHON_VERSION} --yes
 	@echo "Installing requirements ..."
 	conda run -n ${CONDA_ENV_NAME} pip install -r requirements.txt
-    @echo "Conda environment activation ..."
-    conda activate ${CONDA_ENV_NAME}
+	@echo "Conda environment activation ..."
+	conda activate ${CONDA_ENV_NAME}
 
 run: setup
 	@echo "Running bot ..."
