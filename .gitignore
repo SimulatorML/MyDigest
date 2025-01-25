@@ -1,2 +1,7 @@
 .env
 *.pyc
+__pycache__
+.venv
+/venv
+.vscode/
+.DS_store

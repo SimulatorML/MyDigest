@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: mydigest_bot_db
+    restart: always
+    environment:
+      POSTGRES_USER: your_username
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: mydigest_database
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
