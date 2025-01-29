@@ -18,8 +18,5 @@ async def main():
 
 
 if __name__ == '__main__':
-    #  
-    # Вынести настройки логгера в отдельный файл
-    # Написать функции-декораторы для логирования сообщений/команд
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
