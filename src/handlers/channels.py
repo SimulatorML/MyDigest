@@ -74,6 +74,7 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 async def process_channels_input(message: Message, state: FSMContext):
     user_id = message.from_user.id
     channels_text = message.text.strip()
+    addition_timestamp = datetime.now().isoformat()
 
     if not channels_text:
         await message.answer("Пожалуйста, отправьте корректный список каналов.")
@@ -86,7 +87,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         return
 
     await fetch_user(user_id)
-    await add_user_channels(user_id, new_channels)
+    await add_user_channels(user_id, new_channels, addition_timestamp)
     await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
 
     # Сбрасываем состояние
