@@ -82,8 +82,10 @@ async def process_channels_input(message: Message, state: FSMContext):
 
     new_channels = {ch.strip() for ch in channels_text.split() if ch.strip()}
 
-    if not all(re.match(r'^@[^@]+$', ch) for ch in new_channels):
-        await message.answer("Все каналы должны начинаться с одного символа '@'. Попробуйте снова.")
+    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
+        await message.answer(
+            "Все каналы должны начинаться с одного символа '@', не содержать знаков препинания в конце названия и быть разделены пробелом. Попробуйте снова."
+        )
         return
 
     await fetch_user(user_id)
@@ -127,10 +129,13 @@ async def process_delete_command(message: Message, state: FSMContext):
 @router.message(UserStates.waiting_for_delete)
 async def process_delete_channels(message: Message, state: FSMContext):
     user_id = message.from_user.id
+
     channels_to_delete = {ch.strip() for ch in message.text.split() if ch.strip()}
 
-    if not all(re.match(r'^@[^@]+$', ch) for ch in channels_to_delete):
-        await message.answer("Все каналы должны начинаться с одного символа '@'. Попробуйте снова.")
+    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in channels_to_delete):
+        await message.answer(
+            "Все каналы должны начинаться с одного символа '@', не содержать знаков препинания в конце названия и быть разделены пробелом. Попробуйте снова."
+        )
         return
 
     await delete_user_channels(user_id, channels_to_delete)
