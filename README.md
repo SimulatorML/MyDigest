@@ -25,6 +25,13 @@ A news aggregator bot that provides users with personalized, concise daily diges
     python ./src/main.py
     ```
 
+3. **Or use Makefile Run after completing point "Clone the Repository"**
+    ```bash
+    make setup
+    conda activate mydigest
+    make run
+    ```
+
 ## Development
 ### Adding a New Feature
 1) Create a new branch:
