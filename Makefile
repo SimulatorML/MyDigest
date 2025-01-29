@@ -1,4 +1,4 @@
-.PHONY: setup run clean
+.PHONY: setup run clean help
 
 CONDA_ENV_NAME=mydigest
 PYTHON_VERSION=3.11
