@@ -1,71 +1,61 @@
 import logging
 import asyncio
-from ssl import CHANNEL_BINDING_TYPES
-import json
-
-from aiogram import Bot, Dispatcher, Router, types
-from aiogram.filters import Command
+from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from charset_normalizer import from_path
 
-from config import bot_token
-from src.scraper import connect_client, scrape_messages
-from summarization import summarize
+from config import TELEGRAM_BOT_TOKEN
+from commands import ALL_COMMANDS
+from handlers.digest import router as digest_router
+from handlers.channels import router as channels_router
+from scraper import connect_client
 
+class DigestBot:
+    def __init__(self):
+        # Initialize bot and dispatcher
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        self.dp = Dispatcher(storage=MemoryStorage())
+        
+        # Register routers
+        self.dp.include_router(digest_router)
+        self.dp.include_router(channels_router)
 
+    def start(self):
+        """Start the bot"""
+        asyncio.run(self._start_polling())
 
-# Initialize bot and dispatcher
-bot = Bot(token=bot_token)
-dp = Dispatcher(storage=MemoryStorage())
-router = Router()
-CHANNEL_NAME = "rbc_news"
+    async def _start_polling(self):
+        try:
+            # Start polling with startup and shutdown handlers
+            await self.dp.start_polling(
+                self.bot,
+                on_startup=self._on_startup,
+                on_shutdown=self._on_shutdown
+            )
+        finally:
+            await self.bot.session.close()
 
-# Command Handlers
-@router.message(Command("start"))
-async def start_handler(msg: types.Message):
-    await msg.answer("Hello! It's MyDigest bot. I can help you collect personal news sources and provide daily digests.",
-                     reply_markup=types.ReplyKeyboardRemove())  # Remove the keyboard if any
+    async def _on_startup(self, dp: Dispatcher):
+        await connect_client()
 
-@router.message(Command("help"))
-async def send_menu(msg: types.Message):
-    await msg.answer("Command /daily_digest gives you the daily digest of news.\n"
-                     "Command /weekly_digest gives you the weekly digest of news.")
+        # Setup bot commands
+        await self.bot.delete_my_commands()
+        await self.bot.set_my_commands(ALL_COMMANDS)
 
-@router.message(Command("daily_digest"))
-async def daily_digest(msg: types.Message):
-    await connect_client()  # Ensure Telethon client is connected
-    messages = await scrape_messages(entity_name=CHANNEL_NAME, limit=10, time_range="24h")
-    if messages:
-        summary = summarize(messages, CHANNEL_NAME)
-        await msg.answer(f"Дневной дайджест новостей:\n\n{summary}")
-    else:
-        await msg.answer("No messages found for the daily digest.")
+        logging.info("Bot started successfully")
+        logging.info("Bot commands updated")
 
-@router.message(Command("weekly_digest"))
-async def weekly_digest(msg: types.Message):
-    await connect_client()  # Ensure Telethon client is connected
-    messages = await scrape_messages(entity_name=CHANNEL_NAME, limit=24, time_range="7d")
-    if messages:
-        #json_data = json.dumps(messages, indent=4, ensure_ascii=False)
-        summary = summarize(messages, CHANNEL_NAME)
-        await msg.answer(f"Недельный дайджест новостей:\n\n{summary}")
-    else:
-        await msg.answer("No messages found for the weekly digest.")
-
-
-
-# Main function to start the bot
-async def main():
-    # Initialize the bot and connect to Telegram client
-    await connect_client()
-
-    # Register routers and start polling
-    dp.include_router(router)
-    await dp.start_polling(bot)
+    async def _on_shutdown(self, dp: Dispatcher):
+        """Shutdown handler"""
+        logging.info("Bot is shutting down")
+        await self.bot.session.close()
 
 if __name__ == '__main__':
     # Setup logging
-    logging.basicConfig(level=logging.INFO)
-
-    # Run the bot
-    asyncio.run(main())
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    
+    # Create and start bot
+    digest_bot = DigestBot()
+    digest_bot.start()

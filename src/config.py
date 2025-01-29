@@ -1,3 +1,4 @@
+import pathlib
 import os
 from dotenv import load_dotenv
 
@@ -8,7 +9,8 @@ load_dotenv()
 api_id = os.getenv('TELEGRAM_API_ID')
 api_hash = os.getenv('TELEGRAM_API_HASH')
 phone_number = os.getenv('TELEGRAM_PHONE_NUMBER')
-bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
-
-print(f"API ID: {api_id}, API Hash: {api_hash}, Phone: {phone_number}, Bot Token: {bot_token}")
+ROOT_DIR = pathlib.Path(__file__).parent.parent.absolute()
+DATA_DIR = ROOT_DIR / "data"
+CHANNELS_FILE = DATA_DIR / "channels.json"
