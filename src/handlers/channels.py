@@ -1,9 +1,12 @@
+import re
+from datetime import datetime
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from src.data.database import (
+    fetch_user,
     fetch_user_channels,
     add_user,
     add_user_channels,
@@ -27,10 +30,21 @@ async def process_start_command(message: Message):
         "Используйте следующие команды:\n"
         "/add_channels - добавить каналы\n"
         "/show_channels - показать список ваших каналов\n"
-        "/delete - удалить каналы\n"
-        "/clear - полностью очистить список каналов\n"
+        "/delete_channels - удалить каналы\n"
+        "/clear_channels - полностью очистить список каналов\n"
         "/help - показать эту справку"
     )
+    user_id = message.from_user.id
+    username = message.from_user.username if message.from_user.username else "unknown"
+    login_timestamp = datetime.now().isoformat()
+
+    # Добавляем или обновляем пользователя
+    user_exists = await fetch_user(user_id)
+    if not user_exists:
+        await add_user(user_id, username, login_timestamp)
+        await message.answer("Вы успешно зарегистрированы!")
+    else:
+        await message.answer("Вы уже зарегистрированы!")
 
 
 @router.message(Command(commands="help"))
@@ -40,22 +54,16 @@ async def process_help_command(message: Message):
         "Доступные команды:\n"
         "/add_channels - добавить каналы\n"
         "/show_channels - показать список ваших каналов\n"
-        "/delete - удалить каналы\n"
-        "/clear - полностью очистить список каналов\n"
+        "/delete_channels - удалить каналы\n"
+        "/clear_channels - полностью очистить список каналов\n"
         "/help - показать эту справку"
     )
 
 
 @router.message(Command(commands="add_channels"))
 async def process_add_channels_command(message: Message, state: FSMContext):
-    user_id = str(message.from_user.id)
-    username = message.from_user.username or "unknown"
-
-    # Добавляем или обновляем пользователя
-    await add_user(user_id, username)
-
     await message.answer(
-        "Пожалуйста, отправьте список каналов в формате: @channel1 @channel2"
+        "Пожалуйста, отправьте список каналов для добавления в формате: @channel1 @channel2"
     )
     # Устанавливаем состояние ожидания ввода каналов
     await state.set_state(UserStates.waiting_for_channels)
@@ -64,26 +72,22 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 # Обработчик для получения списка каналов
 @router.message(UserStates.waiting_for_channels)
 async def process_channels_input(message: Message, state: FSMContext):
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id
     channels_text = message.text.strip()
 
     if not channels_text:
         await message.answer("Пожалуйста, отправьте корректный список каналов.")
         return
 
-    # Разбиваем текст на отдельные каналы
-    new_channels = [ch.strip() for ch in channels_text.split() if ch.strip()]
+    new_channels = {ch.strip() for ch in channels_text.split() if ch.strip()}
 
-    if not all(ch.startswith("@") for ch in new_channels):
-        await message.answer("Все каналы должны начинаться с '@'")
+    if not all(re.match(r'^@[^@]+$', ch) for ch in new_channels):
+        await message.answer("Все каналы должны начинаться с одного символа '@'. Попробуйте снова.")
         return
 
-    result = await add_user_channels(user_id, new_channels)
-
-    if result is not None:
-        await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
-    else:
-        await message.answer("Произошла ошибка при добавлении каналов.")
+    await fetch_user(user_id)
+    await add_user_channels(user_id, new_channels)
+    await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
 
     # Сбрасываем состояние
     await state.clear()
@@ -91,7 +95,7 @@ async def process_channels_input(message: Message, state: FSMContext):
 
 @router.message(Command(commands="show_channels"))
 async def process_show_channels_command(message: Message):
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id
     channels = await fetch_user_channels(user_id)
 
     if channels:
@@ -101,9 +105,9 @@ async def process_show_channels_command(message: Message):
         await message.answer("У вас пока нет добавленных каналов.")
 
 
-@router.message(Command(commands="delete"))
+@router.message(Command(commands="delete_channels"))
 async def process_delete_command(message: Message, state: FSMContext):
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id
     channels = await fetch_user_channels(user_id)
 
     if not channels:
@@ -121,12 +125,11 @@ async def process_delete_command(message: Message, state: FSMContext):
 
 @router.message(UserStates.waiting_for_delete)
 async def process_delete_channels(message: Message, state: FSMContext):
-    user_id = str(message.from_user.id)
-    channels_to_delete = [ch.strip() for ch in message.text.split() if ch.strip()]
+    user_id = message.from_user.id
+    channels_to_delete = {ch.strip() for ch in message.text.split() if ch.strip()}
 
-    # Проверяем формат каналов
-    if not all(ch.startswith("@") for ch in channels_to_delete):
-        await message.answer("Все каналы должны начинаться с '@'. Попробуйте снова.")
+    if not all(re.match(r'^@[^@]+$', ch) for ch in channels_to_delete):
+        await message.answer("Все каналы должны начинаться с одного символа '@'. Попробуйте снова.")
         return
 
     await delete_user_channels(user_id, channels_to_delete)
@@ -134,24 +137,11 @@ async def process_delete_channels(message: Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(Command(commands="clear"))
+@router.message(Command(commands="clear_channels"))
 async def process_clear_command(message: Message):
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id
     await clear_user_channels(user_id)
     await message.answer("Все каналы удалены.")
-
-
-@router.callback_query(lambda c: c.data.startswith("clear_"))
-async def process_clear_callback(callback: CallbackQuery):
-    user_id = str(callback.from_user.id)
-
-    if callback.data == "clear_confirm":
-        await clear_user_channels(user_id)  # Очищаем каналы в Supabase
-        await callback.message.edit_text("✅ Список каналов успешно очищен.")
-    else:  # clear_cancel
-        await callback.message.edit_text("❌ Очистка списка каналов отменена.")
-
-    await callback.answer()
 
 
 # Хэндлер для всех остальных сообщений
