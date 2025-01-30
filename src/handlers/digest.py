@@ -1,9 +1,10 @@
+from typing import List, Dict, Any
 from aiogram import Router, types, Bot
 from aiogram.filters import Command
 
-# Remove 'src.' from imports
-from scraper import connect_client, scrape_messages
-from summarization import summarize
+from src.data.database_manager import DatabaseManager
+from src.scraper import connect_client, scrape_messages, get_user_digest
+from src.summarization import summarize
 
 router = Router()
 CHANNEL_NAME = "rbc_news"
@@ -23,11 +24,11 @@ async def send_menu(msg: types.Message):
     )
 
 @router.message(Command("daily_digest"))
-async def daily_digest(msg: types.Message):
-    await connect_client()
-    messages = await scrape_messages(entity_name=CHANNEL_NAME, limit=10, time_range="24h")
+async def daily_digest(msg: types.Message) -> None:
+    user_id = msg.from_user.id
+    messages = await get_user_digest(user_id, time_range="24h")
     if messages:
-        summary = summarize(messages, CHANNEL_NAME)
+        summary = summarize(messages)
         await msg.answer(f"Дневной дайджест новостей:\n\n{summary}")
     else:
         await msg.answer("No messages found for the daily digest.")

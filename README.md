@@ -16,14 +16,22 @@ A news aggregator bot that provides users with personalized, concise daily diges
    ```bash
    git clone https://github.com/SimulatorML/MyDigest
    cd MyDigest
+   ```
 
-2. **Run**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    python ./src/main.py
-    ```
+2. **Setup with Conda (recommended)**:
+   ```bash
+   make setup
+   conda activate mydigest
+   make run
+   ```
+
+3. **Or manual setup with venv**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use: venv\Scripts\activate
+   pip install -r requirements.txt
+   python src/bot.py
+   ```
 
 ## Development
 ### Adding a New Feature
@@ -57,7 +65,7 @@ A news aggregator bot that provides users with personalized, concise daily diges
 ## Project structure
 
 1) `data` -- данные для работы с ботом
-2) `dev_scripts` - скрипты для локальной борки и запуска сервиса в докер контейнере;
+2) `dev_scripts` - скрипты для локальной cборки и запуска сервиса в докер контейнере, локальных тестов отдельных скриптов;
 3) `notebooks` - jupyter notebooks для экспериментов/тестов/примеров
 3) `src` - код проекта:
 3) `test` - тесты

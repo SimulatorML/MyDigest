@@ -3,11 +3,11 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import TELEGRAM_BOT_TOKEN
-from commands import ALL_COMMANDS
-from handlers.digest import router as digest_router
-from handlers.channels import router as channels_router
-from scraper import connect_client
+from src.config.config import TELEGRAM_BOT_TOKEN
+from src.commands import ALL_COMMANDS
+from src.handlers.digest import router as digest_router
+from src.handlers.channels import router as channels_router
+from src.scraper import connect_client
 
 class DigestBot:
     def __init__(self):
@@ -53,8 +53,13 @@ if __name__ == '__main__':
     # Setup logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('bot.log'),
+            logging.StreamHandler()
+        ]
     )
+    logger = logging.getLogger(__name__)
     
     # Create and start bot
     digest_bot = DigestBot()
