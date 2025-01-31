@@ -19,6 +19,10 @@ async def connect_client():
 # Get entity by name
 async def get_entity(entity_name):
     try:
+        if not client.is_connected():
+            print("Telethon client disconnected. Reconnecting...")
+            await connect_client()  # Reconnect before accessing the entity
+
         entity = await client.get_entity(entity_name)
         print(f"Accessing {entity_name}")
         return entity
