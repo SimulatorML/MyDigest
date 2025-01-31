@@ -79,7 +79,12 @@ async def get_user_digest(user_id: int, time_range: str = "24h") -> List[Dict[st
     """Get digest for specific user based on their channels"""
     db_manager = DatabaseManager(supabase)
     user_channels = await db_manager.get_user_channels(user_id)
-    
+
+    if not user_channels:
+        return []
+
+    await connect_client()
+
     all_messages = []
     for channel in user_channels:
         messages = await scrape_messages(channel, time_range=time_range)
