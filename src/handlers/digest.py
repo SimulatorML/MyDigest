@@ -6,7 +6,7 @@ from src.scraper import TelegramScraper
 from src.summarization import summarize
 
 router = Router()
-CHANNEL_NAME = "rbc_news"
+scraper = TelegramScraper()
 
 @router.message(Command("start"))
 async def start_handler(msg: types.Message):
