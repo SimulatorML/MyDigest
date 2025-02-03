@@ -1,9 +1,8 @@
 from typing import List, Dict, Any
 from aiogram import Router, types, Bot
 from aiogram.filters import Command
-
-from src.data.database_manager import DatabaseManager
-from src.scraper import connect_client, scrape_messages, get_user_digest
+from collections import defaultdict
+from src.scraper import TelegramScraper
 from src.summarization import summarize
 
 router = Router()
