@@ -6,6 +6,8 @@ from g4f.client import Client
 # first option
 def summarize(news: list, channel: str) -> list:
 
+    channel = channel.lstrip("@")
+
     PROMPT = (f"Please create a summary of each piece of news provided. Here's the list: {news}. "
               f"Create a list with the same size as the number of news pieces provided. Use bullet points."
               f"Each summary should be in Russian and no longer than 150 characters. "
