@@ -32,8 +32,8 @@ async def fetch_user(user_id):
              fetched.
     """
     try:
-        response = supabase.table("users").select("*").eq("user_id", user_id).execute()
-        return response.data
+        response = supabase.table("users").select("user_id").eq("user_id", user_id).execute()
+        return response.data[0]["user_id"] if response.data else None    # Return only user_id value
     except AuthApiError as e:
         SupabaseErrorHandler.handle_auth_error(e, user_id)
         return None
@@ -66,7 +66,7 @@ async def add_user(user_id, username, login_timestamp=None):
             )
             .execute()
         )
-        if response.status_code in [200, 201]:
+        if response.data:
             print("Пользователь успешно добавлен или обновлен.")
         else:
             print(f"Ошибка при добавлении пользователя: {response.data}")
@@ -94,9 +94,12 @@ async def fetch_user_channels(user_id):
     """
     try:
         response = (
-            supabase.table("user_channels").select("*").eq("user_id", user_id).execute()
+            supabase.table("user_channels")
+            .select("channel_id, channel_name")
+            .eq("user_id", user_id)
+            .execute()
         )
-        return response.data
+        return response.data if response.data else None  # Return channel_id and channel_name
     except AuthApiError as e:
         SupabaseErrorHandler.handle_auth_error(e, user_id)
         return []
@@ -129,7 +132,7 @@ async def add_user_channels(user_id, channels, addition_timestamp=None):
 
         response = supabase.table("user_channels").upsert(data).execute()
 
-        if response.status_code in [200, 201]:
+        if response.data:
             print("Данные о пользователях и их каналах успешно записаны в базу данных.")
             return True
         else:
@@ -182,3 +185,51 @@ async def clear_user_channels(user_id):
         SupabaseErrorHandler.handle_api_error(e, user_id)
     except Exception as e:
         SupabaseErrorHandler.handle_general_error(e, user_id)
+
+
+async def save_user_digest(
+    user_id: int, channel_id: int, digest_content: str, creation_timestamp: str = None
+):
+    try:
+        response = (
+            supabase.table("digests")
+            .upsert(
+                {
+                    "user_id": user_id,
+                    "channel_id": channel_id,
+                    "content": digest_content,
+                    "creation_timestamp": creation_timestamp,
+                }
+            )
+            .execute()
+        )
+        if response.data:
+            print("Дайджест успешно сохранён в базу данных.")
+            return True
+        else:
+            print(f"Ошибка при записи дайджеста: {response.data}")
+            return False
+    except AuthApiError as e:
+        SupabaseErrorHandler.handle_auth_error(e, user_id)
+    except PostgrestAPIError as e:
+        SupabaseErrorHandler.handle_api_error(e, user_id)
+    except Exception as e:
+        SupabaseErrorHandler.handle_general_error(e, user_id)
+    return False
+
+
+async def fetch_user_digests(user_id):
+    try:
+        response = (
+            supabase.table("digests").select("content").eq("user_id", user_id).execute()
+        )
+        return [item["content"] for item in response.data] if response.data else None
+    except AuthApiError as e:
+        SupabaseErrorHandler.handle_auth_error(e, user_id)
+        return []
+    except PostgrestAPIError as e:
+        SupabaseErrorHandler.handle_api_error(e, user_id)
+        return []
+    except Exception as e:
+        SupabaseErrorHandler.handle_general_error(e, user_id)
+        return []
