@@ -92,6 +92,9 @@ async def get_user_digest(user_id: int, time_range: str = "24h") -> List[Dict[st
     all_messages = []
     for channel in user_channels:
         messages = await scrape_messages(channel, time_range=time_range)
+        # Добавляем информацию о канале к каждому сообщению
+        for msg in messages:
+            msg["channel"] = channel
         all_messages.extend(messages)
     
     return all_messages
