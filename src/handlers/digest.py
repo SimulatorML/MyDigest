@@ -26,7 +26,7 @@ async def send_menu(msg: types.Message):
 @router.message(Command("daily_digest"))
 async def daily_digest(msg: types.Message) -> None:
     user_id = msg.from_user.id
-    messages = await get_user_digest(user_id, time_range="24h")
+    messages = await scraper.get_user_digest(user_id, time_range="24h")
 
     if not messages:
         await msg.answer("No new messages in the last 24 hours.")
