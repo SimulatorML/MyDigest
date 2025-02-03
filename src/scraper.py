@@ -107,14 +107,51 @@ async def get_user_digest(user_id: int, time_range: str = "24h") -> List[Dict[st
     if not user_channels:
         return []
 
-    await connect_client()
+        all_messages = []
+        for channel in user_channels:
+            messages = await self.scrape_messages(channel, time_range=time_range)
+            for msg in messages:
+                msg["channel"] = channel
+            all_messages.extend(messages)
 
-    all_messages = []
-    for channel in user_channels:
-        messages = await scrape_messages(channel, time_range=time_range)
-        # Добавляем информацию о канале к каждому сообщению
-        for msg in messages:
-            msg["channel"] = channel
-        all_messages.extend(messages)
-    
-    return all_messages
+        return all_messages
+
+    async def check_new_messages(self, user_id: int):
+        """
+        Background task that continuously checks for new messages in the channels a user is subscribed to.
+        If the number of new messages in a channel within the last hour exceeds the threshold,
+        a digest is generated and sent to the user.
+        """
+        sent_digest_channels = set()
+
+        while True:
+            user_channels = await self.db_manager.get_user_channels(user_id)
+
+            if not user_channels:
+                await asyncio.sleep(1800)
+                continue
+
+            for channel in user_channels:
+                now = datetime.utcnow()
+                one_hour_ago = now - timedelta(hours=1)
+
+                if channel in sent_digest_channels:
+                    continue
+
+                messages = await self.scrape_messages(channel, limit=100)
+                if not messages:
+                    continue
+
+                recent_messages = [
+                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= one_hour_ago
+                ]
+
+                if len(recent_messages) >= self.threshold_messages:
+                    summary = summarize(recent_messages, channel)
+                    await bot.send_message(user_id, f"📢 Дайджест за последний час для {channel}:\n\n{summary}")
+
+                    sent_digest_channels.add(channel)
+
+            await asyncio.sleep(600)
+            await asyncio.sleep(3600)
+            sent_digest_channels.clear()
