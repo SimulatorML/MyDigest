@@ -13,12 +13,19 @@ class TelegramScraper:
         and message threshold for sending digests.
         """
 
-# Connect to Telegram client
-async def connect_client():
-    """Ensure the Telethon client is connected."""
-    if not client.is_connected():
-        await client.start(phone=PHONE_NUMBER)
-        print("Telethon client connected")
+        self.client = TelegramClient("parsing_2.session", API_ID, API_HASH)
+        self.db_manager = DatabaseManager(supabase)
+        self.threshold_messages = 2
+
+    async def connect_client(self):
+        """
+        Ensures that the Telethon client is connected.
+        If the client is not connected, it starts the client using the provided phone number.
+        """
+
+        if not self.client.is_connected():
+            await self.client.start(phone=PHONE_NUMBER)
+            print("Telethon client connected")
 
 # Get entity by name
 async def get_entity(entity_name):
