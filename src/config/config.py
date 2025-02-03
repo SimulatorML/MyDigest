@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from pathlib import Path
+from aiogram import Bot
 
 # Load environment variables
 load_dotenv()
