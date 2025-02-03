@@ -25,6 +25,7 @@ class DigestBot:
 
     async def _start_polling(self):
         try:
+            asyncio.create_task(scraper.check_new_messages(int(1129111522)))
             # Start polling with startup and shutdown handlers
             await self.dp.start_polling(
                 self.bot,
