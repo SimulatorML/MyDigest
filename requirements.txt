@@ -1,6 +1,6 @@
 asyncpg==0.30.0
 aiogram==3.16.0
-g4f==0.4.5.0
+g4f==0.4.3.5
 loguru==0.7.3
 python-dotenv==1.0.0
 tqdm==4.67.1
