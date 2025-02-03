@@ -1,6 +1,3 @@
-from multiprocessing.context import DefaultContext
-from urllib.parse import uses_query
-
 from g4f.client import Client
 
 # first option

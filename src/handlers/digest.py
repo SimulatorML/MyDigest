@@ -1,4 +1,3 @@
-from typing import List, Dict, Any
 from aiogram import Router, types, Bot
 from aiogram.filters import Command
 from collections import defaultdict
@@ -15,12 +14,6 @@ async def start_handler(msg: types.Message):
         reply_markup=types.ReplyKeyboardRemove()
     )
 
-@router.message(Command("help"))
-async def send_menu(msg: types.Message):
-    await msg.answer(
-        "Command /daily_digest gives you the daily digest of news.\n"
-        "Command /weekly_digest gives you the weekly digest of news."
-    )
 
 @router.message(Command("daily_digest"))
 async def daily_digest(msg: types.Message) -> None:
@@ -33,7 +26,6 @@ async def daily_digest(msg: types.Message) -> None:
 
     # Группируем сообщения по каналам
     messages_by_channel = defaultdict(list)
-    print(messages_by_channel)
     for message in messages:
         messages_by_channel[message["channel"]].append(message)
 
@@ -42,12 +34,3 @@ async def daily_digest(msg: types.Message) -> None:
         summary = summarize(channel_messages, channel)
         await msg.answer(f"📢 Дайджест для {channel}: \n\n{summary}")
 
-@router.message(Command("weekly_digest"))
-async def weekly_digest(msg: types.Message):
-    await connect_client()
-    messages = await scrape_messages(entity_name=CHANNEL_NAME, limit=24, time_range="7d")
-    if messages:
-        summary = summarize(messages, CHANNEL_NAME)
-        await msg.answer(f"Недельный дайджест новостей:\n\n{summary}")
-    else:
-        await msg.answer("No messages found for the weekly digest.")
