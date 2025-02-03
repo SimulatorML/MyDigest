@@ -20,3 +20,5 @@ PHONE_NUMBER = os.getenv('TELEGRAM_PHONE_NUMBER')
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
