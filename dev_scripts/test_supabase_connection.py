@@ -31,7 +31,7 @@ def test_supabase_connection():
 
         data_users = {
             "user_id": 123456,
-            "username": "username_1",
+            "username": "username_2",
             "login_timestamp": datetime.now().isoformat(),
         }
         data_channel = {
@@ -41,23 +41,23 @@ def test_supabase_connection():
             "addition_timestamp": datetime.now().isoformat(),
         }
         # Test table query
-        response_1 = supabase.table("users").insert(data_users).execute()
+        response_1 = supabase.table("users").upsert(data_users).execute()
         response_2 = supabase.table("users").select("*").limit(3).execute()
         response_3 = supabase.table("user_channels").upsert(data_channel).execute()
         response_4 = supabase.table("user_channels").select("*").limit(3).execute()
 
-        print("Connection to Supabase successful!")
+        print("Connection to Supabase successful!\n")
         print(
-            f"The test upsert-1 has been executed successfully. Response: {response_1}"
+            f"The test upsert-1 has been executed successfully. Response: {response_1}\n"
         )
         print(
-            f"The test request-2 has been executed successfully. Response: {response_2}"
+            f"The test request-2 has been executed successfully. Response: {response_2}\n"
         )
         print(
-            f"The test upsert-3 has been executed successfully. Response: {response_3}"
+            f"The test upsert-3 has been executed successfully. Response: {response_3}\n"
         )
         print(
-            f"The test request-4 has been executed successfully. Response: {response_4}"
+            f"The test request-4 has been executed successfully. Response: {response_4}\n"
         )
         return True
 
