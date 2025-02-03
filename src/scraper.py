@@ -6,8 +6,12 @@ from typing import List, Dict, Any
 from src.data.database_manager import DatabaseManager
 from src.config.config import supabase
 
-# Initialize Telethon client
-client = TelegramClient("parsing_2.session", API_ID, API_HASH)
+class TelegramScraper:
+    def __init__(self):
+        """
+        Initializes the TelegramScraper class by setting up the Telegram client, database manager,
+        and message threshold for sending digests.
+        """
 
 # Connect to Telegram client
 async def connect_client():
