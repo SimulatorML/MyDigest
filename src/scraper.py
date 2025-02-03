@@ -27,12 +27,21 @@ class TelegramScraper:
             await self.client.start(phone=PHONE_NUMBER)
             print("Telethon client connected")
 
-# Get entity by name
-async def get_entity(entity_name):
-    try:
-        if not client.is_connected():
-            print("Telethon client disconnected. Reconnecting...")
-            await connect_client()  # Reconnect before accessing the entity
+    async def get_entity(self, entity_name):
+        """
+        Fetches a Telegram entity (such as a channel or user) by its name.
+
+        Args:
+            entity_name (str): The username or channel name of the Telegram entity.
+
+        Returns:
+            dict or None: A dictionary representing the entity object if retrieval
+            is successful, otherwise None if the entity is not found or an error occurs.
+        """
+        try:
+            if not self.client.is_connected():
+                print("Telethon client disconnected. Reconnecting...")
+                await self.connect_client()
 
         entity = await client.get_entity(entity_name)
         print(f"Accessing {entity_name}")
