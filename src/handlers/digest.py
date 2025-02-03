@@ -27,11 +27,21 @@ async def send_menu(msg: types.Message):
 async def daily_digest(msg: types.Message) -> None:
     user_id = msg.from_user.id
     messages = await get_user_digest(user_id, time_range="24h")
-    if messages:
-        summary = summarize(messages)
-        await msg.answer(f"Дневной дайджест новостей:\n\n{summary}")
-    else:
-        await msg.answer("No messages found for the daily digest.")
+
+    if not messages:
+        await msg.answer("No new messages in the last 24 hours.")
+        return
+
+    # Группируем сообщения по каналам
+    messages_by_channel = defaultdict(list)
+    print(messages_by_channel)
+    for message in messages:
+        messages_by_channel[message["channel"]].append(message)
+
+    # Создаем и отправляем дайджест для каждого канала
+    for channel, channel_messages in messages_by_channel.items():
+        summary = summarize(channel_messages, channel)
+        await msg.answer(f"📢 Дайджест для {channel}: \n\n{summary}")
 
 @router.message(Command("weekly_digest"))
 async def weekly_digest(msg: types.Message):
