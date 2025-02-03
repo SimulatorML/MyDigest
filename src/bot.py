@@ -7,7 +7,9 @@ from src.config.config import TELEGRAM_BOT_TOKEN
 from src.commands import ALL_COMMANDS
 from src.handlers.digest import router as digest_router
 from src.handlers.channels import router as channels_router
-from src.scraper import connect_client
+from src.scraper import TelegramScraper
+
+scraper = TelegramScraper()
 
 class DigestBot:
     def __init__(self):
