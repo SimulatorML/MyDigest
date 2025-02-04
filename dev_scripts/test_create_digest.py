@@ -6,13 +6,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import asyncio
 from datetime import datetime
-from src.data.database import fetch_user_channels, save_user_digest
+from src.data.database import fetch_user, fetch_user_channels, save_user_digest
 from src.scraper import scrape_messages, connect_client
 from src.summarization import summarize
 from src.scraper import client
 
 
-async def create_and_save_digest(user_id: int):
+async def create_and_save_digest(user_id: int) -> None:
     """
     Create and save a digest for the specified user.
 
@@ -30,17 +30,22 @@ async def create_and_save_digest(user_id: int):
     # Подключаемся к клиенту Telegram
     await connect_client()
 
+    # Получаем пользователя
+    exist_user = await fetch_user(user_id)
+    if not exist_user:
+        print(f"Пользователь {user_id} НЕ существует в БД")
+        return
+    
     # Получаем каналы пользователя
     channels = await fetch_user_channels(
-        user_id
-    )  # Return dict of channel_id and channel_name
+        exist_user) if exist_user else None
 
     if not channels:
-        print("Нет каналов для пользователя.")
+        print(f"Нет каналов для пользователя {user_id}.")
         return
-
+    
+    # Получаем сообщения из канала
     for channel in channels:
-        # Получаем сообщения из канала
         messages = await scrape_messages(
             channel["channel_name"], limit=5, time_range="7d"
         )
@@ -69,13 +74,19 @@ async def main():
     try:
         await create_and_save_digest(user_id)
     finally:
-        # Даем время на завершение фоновых задач - тогда не возникает RuntimeWarning
+        # Даем время на завершение фоновых задач - тогда RuntimeWarning возникает реже
         await asyncio.sleep(1)
         # Закрываем соединение с Telegram API
-        if client.is_connected():
-            await client.disconnect()
-            print("Соединение с Telegram API закрыто")
+        try:
+            if client.is_connected():
+                await client.disconnect()
+                print("Соединение с Telegram API закрыто")
+        except Exception as e:
+            print(f"Ошибка при закрытии соединения с Telegram API: {e}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nСкрипт прерван пользователем")
