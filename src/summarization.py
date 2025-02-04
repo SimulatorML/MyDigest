@@ -1,7 +1,5 @@
-from multiprocessing.context import DefaultContext
-from urllib.parse import uses_query
-
 from g4f.client import Client
+
 
 # first option
 def summarize(news: list, channel: str) -> list:
@@ -14,9 +12,14 @@ def summarize(news: list, channel: str) -> list:
               f"Structure the output as follows:\n Links must be on the next line after the summary.")
 
     client = Client()
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": PROMPT}],
-        web_search=False
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": PROMPT}],
+            timeout=10,
+            web_search=False
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Ошибка генерации дайджеста: {e}")
+        return None
