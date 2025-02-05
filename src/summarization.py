@@ -16,7 +16,6 @@ def summarize(news: list, channel: str) -> list:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": PROMPT}],
-            timeout=10,
             web_search=False
         )
         return response.choices[0].message.content
