@@ -64,10 +64,10 @@ A news aggregator bot that provides users with personalized, concise daily diges
 
 ## Project structure
 
-1) `data` -- данные для работы с ботом
-2) `dev_scripts` - скрипты для локальной cборки и запуска сервиса в докер контейнере, локальных тестов отдельных скриптов;
+1) `data` - данные для работы с ботом
+2) `dev_scripts` - скрипты для локальной cборки и запуска сервиса в докер контейнере
 3) `notebooks` - jupyter notebooks для экспериментов/тестов/примеров
-3) `src` - код проекта:
+3) `src` - код проекта
 3) `test` - тесты
 
 
