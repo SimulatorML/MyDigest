@@ -2,12 +2,12 @@ import logging
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-
-from src.config.config import TELEGRAM_BOT_TOKEN
 from src.commands import ALL_COMMANDS
 from src.handlers.digest import router as digest_router
 from src.handlers.channels import router as channels_router
-from src.scraper import connect_client
+from src.scraper import TelegramScraper
+
+scraper = TelegramScraper()
 
 class DigestBot:
     def __init__(self):
@@ -25,6 +25,7 @@ class DigestBot:
 
     async def _start_polling(self):
         try:
+            asyncio.create_task(scraper.check_new_messages(int(1129111522)))
             # Start polling with startup and shutdown handlers
             await self.dp.start_polling(
                 self.bot,
@@ -35,7 +36,6 @@ class DigestBot:
             await self.bot.session.close()
 
     async def _on_startup(self, dp: Dispatcher):
-        await connect_client()
 
         # Setup bot commands
         await self.bot.delete_my_commands()

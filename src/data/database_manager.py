@@ -9,7 +9,7 @@ class DatabaseManager:
     async def get_user_channels(self, user_id: int) -> List[str]:
         """Get channels for specific user"""
         channels = await fetch_user_channels(user_id)
-        return [channel["channel_name"] for channel in channels]
+        return [channel["channel_name"] for channel in channels] if channels else []
         
     async def get_user_digest_settings(self, user_id: int) -> Dict[str, Any]:
         """Get user's digest preferences"""

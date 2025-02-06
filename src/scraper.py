@@ -1,88 +1,172 @@
 import asyncio
-from telethon import TelegramClient, errors
 from datetime import datetime, timedelta
-from src.config.config import API_ID, API_HASH, PHONE_NUMBER
+from telethon import TelegramClient, errors
 from typing import List, Dict, Any
+from src.config.config import API_ID, API_HASH, PHONE_NUMBER, bot
 from src.data.database_manager import DatabaseManager
 from src.config.config import supabase
+from src.summarization import summarize
 
-# Initialize Telethon client
-client = TelegramClient("parsing_2.session", API_ID, API_HASH)
+class TelegramScraper:
+    def __init__(self):
+        """
+        Initializes the TelegramScraper class by setting up the Telegram client, database manager,
+        and message threshold for sending digests.
+        """
 
-# Connect to Telegram client
-async def connect_client():
-    """Ensure the Telethon client is connected."""
-    if not client.is_connected():
-        await client.start(phone=PHONE_NUMBER)
-        print("Telethon client connected")
+        self.client = TelegramClient("parsing_2.session", API_ID, API_HASH)
+        self.db_manager = DatabaseManager(supabase)
+        self.threshold_messages = 2
 
-# Get entity by name
-async def get_entity(entity_name):
-    try:
-        entity = await client.get_entity(entity_name)
-        print(f"Accessing {entity_name}")
-        return entity
-    except Exception as e:
-        print(f"Failed to access {entity_name}: {e}")
-        return None
+    async def connect_client(self):
+        """
+        Ensures that the Telethon client is connected.
+        If the client is not connected, it starts the client using the provided phone number.
+        """
 
-# Scrape messages from the channel
-async def scrape_messages(entity_name: str, limit: int = 400, time_range: str = "24h") -> List[Dict[str, Any]]:
-    """Scrapes messages from a Telegram channel.
+        if not self.client.is_connected():
+            await self.client.start(phone=PHONE_NUMBER)
+            print("Telethon client connected")
 
-    Args:
-        entity_name (str): Name of the Telegram channel/entity
-        limit (int, optional): Maximum number of messages to scrape. Defaults to 400.
-        time_range (str, optional): Time range for messages ("24h" or "7d"). Defaults to "24h".
+    async def get_entity(self, entity_name):
+        """
+        Fetches a Telegram entity (such as a channel or user) by its name.
 
-    Returns:
-        List[Dict[str, Any]]: List of scraped messages with their metadata
+        Args:
+            entity_name (str): The username or channel name of the Telegram entity.
 
-    Raises:
-        FloodWaitError: If Telegram enforces rate limiting
-        Exception: For other unexpected errors
-    """
-    entity = await get_entity(entity_name)
-    if not entity:
-        return []
+        Returns:
+            dict or None: A dictionary representing the entity object if retrieval
+            is successful, otherwise None if the entity is not found or an error occurs.
+        """
+        try:
+            if not self.client.is_connected():
+                print("Telethon client disconnected. Reconnecting...")
+                await self.connect_client()
 
-    now = datetime.now()
-    if time_range == "24h":
-        start_time = now - timedelta(hours=24)
-    elif time_range == "7d":
-        start_time = now - timedelta(days=7)
-    else:
-        print(f"Invalid time range: {time_range}")
-        return []
+            entity = await self.client.get_entity(entity_name)
+            print(f"Accessing {entity_name}")
+            return entity
+        except Exception as e:
+            print(f"Failed to access {entity_name}: {e}")
+            return None
 
-    messages = []
-    try:
-        async for message in client.iter_messages(entity, limit=limit,):
-            message_date_naive = message.date.replace(tzinfo=None)
-            if message_date_naive >= start_time:
-                messages.append({
-                    "message_id": message.id,
-                    "message": message.message
-                })
-            else:
-                break
-    except errors.FloodWaitError as e:
-        print(f'Have to sleep {e.seconds} seconds')
-        await asyncio.sleep(e.seconds)
-        return await scrape_messages(entity_name, limit, time_range)
-    except Exception as e:
-        print(f"Failed to scrape messages: {e}")
+    async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[Dict[str, Any]]:
+        """
+        Scrapes messages from a given Telegram channel within a specified time range.
 
-    return messages
+        Args:
+            entity_name (str): The username or channel name of the Telegram entity.
+            limit (int, optional): The maximum number of messages to scrape. Defaults to 400.
+            time_range (str, optional): The time range for filtering messages.
+                                        Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
+                                        Defaults to "24h".
 
-async def get_user_digest(user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
-    """Get digest for specific user based on their channels"""
-    db_manager = DatabaseManager(supabase)
-    user_channels = await db_manager.get_user_channels(user_id)
-    
-    all_messages = []
-    for channel in user_channels:
-        messages = await scrape_messages(channel, time_range=time_range)
-        all_messages.extend(messages)
-    
-    return all_messages
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
+                - 'message_id' (int): The unique ID of the message.
+                - 'message' (str): The text content of the message.
+                - 'message_date' (datetime): The timestamp of when the message was sent.
+            Returns an empty list if no messages are found or an error occurs.
+        """
+        entity = await self.get_entity(entity_name)
+        if not entity:
+            return []
+
+        now = datetime.utcnow()
+        start_time = now - timedelta(hours=24) if time_range == "24h" else now - timedelta(days=7)
+
+        messages = []
+        try:
+            async for message in self.client.iter_messages(entity, limit=limit):
+                message_date_naive = message.date.replace(tzinfo=None)
+                if message_date_naive >= start_time:
+                    messages.append({
+                        "message_id": message.id,
+                        "message": message.text,
+                        "message_date": message.date
+                    })
+                else:
+                    break
+        except errors.FloodWaitError as e:
+            print(f'Have to sleep {e.seconds} seconds')
+            await asyncio.sleep(e.seconds)
+            return await self.scrape_messages(entity_name, limit, time_range)
+        except Exception as e:
+            print(f"Failed to scrape messages: {e}")
+
+        return messages
+
+    async def get_user_digest(self, user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
+        """
+        Retrieves a digest of messages from the Telegram channels that a user is subscribed to.
+
+        Args:
+            user_id (int): The unique identifier of the Telegram user.
+            time_range (str, optional): The time range for filtering messages.
+                                        Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
+                                        Defaults to "24h".
+
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
+                - 'message_id' (int): The unique ID of the message.
+                - 'message' (str): The text content of the message.
+                - 'message_date' (datetime): The timestamp of when the message was sent.
+                - 'channel' (str): The name of the channel the message belongs to.
+            Returns an empty list if the user is not subscribed to any channels or no messages are found.
+        """
+        user_channels = await self.db_manager.get_user_channels(user_id)
+
+        if not user_channels:
+            return []
+
+        all_messages = []
+        for channel in user_channels:
+            messages = await self.scrape_messages(channel, time_range=time_range)
+            for msg in messages:
+                msg["channel"] = channel
+            all_messages.extend(messages)
+
+        return all_messages
+
+    async def check_new_messages(self, user_id: int):
+        """
+        Background task that continuously checks for new messages in the channels a user is subscribed to.
+        If the number of new messages in a channel within the last hour exceeds the threshold,
+        a digest is generated and sent to the user.
+        """
+        sent_digest_channels = set()
+
+        while True:
+            user_channels = await self.db_manager.get_user_channels(user_id)
+
+            if not user_channels:
+                await bot.send_message(user_id, "Пожалуйста, добавьте каналы. Чтобы добавить канал, вызовите /add_channels")
+                await asyncio.sleep(600)
+                continue
+
+            #setting one hour to run the parser
+            for channel in user_channels:
+                now = datetime.utcnow()
+                one_hour_ago = now - timedelta(hours=1)
+
+                if channel in sent_digest_channels:
+                    continue
+
+                messages = await self.scrape_messages(channel, limit=100)
+                if not messages:
+                    continue
+
+                recent_messages = [
+                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= one_hour_ago
+                ]
+
+                if len(recent_messages) >= self.threshold_messages:
+                    summary = summarize(recent_messages, channel)
+                    await bot.send_message(user_id, f"📢 Дайджест за последний час для {channel}:\n\n{summary}")
+
+                    sent_digest_channels.add(channel)
+
+            await asyncio.sleep(3600)
+
+            sent_digest_channels.clear()
