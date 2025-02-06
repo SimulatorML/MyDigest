@@ -7,15 +7,7 @@ class DatabaseManager:
         self.client = supabase_client
 
     async def get_user_channels(self, user_id: int) -> List[str]:
-        """
-        Get all channels for a given user.
-
-        Args:
-            user_id (int): The ID of the user whose channels are to be fetched.
-
-        Returns:
-            List[str]: A list of channel names associated with the user.
-        """
+        """Get channels for specific user"""
         channels = await fetch_user_channels(user_id)
         return [channel["channel_name"] for channel in channels]
 
