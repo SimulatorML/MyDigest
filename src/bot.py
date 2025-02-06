@@ -3,7 +3,6 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from src.commands import ALL_COMMANDS
-from src.config import bot
 from src.handlers.digest import router as digest_router
 from src.handlers.channels import router as channels_router
 from src.scraper import TelegramScraper
@@ -13,7 +12,7 @@ scraper = TelegramScraper()
 class DigestBot:
     def __init__(self):
         # Initialize bot and dispatcher
-        self.bot = bot
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.dp = Dispatcher(storage=MemoryStorage())
         
         # Register routers
