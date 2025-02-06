@@ -3,11 +3,14 @@ from telethon import TelegramClient, errors
 from datetime import datetime, timedelta
 from src.config.config import API_ID, API_HASH, PHONE_NUMBER
 from typing import List, Dict, Any
-from src.data.database_manager import DatabaseManager
-from src.config.config import supabase
+# from src.data.database_manager import DatabaseManager
+# from src.data.database import save_digest_to_db
+# from src.config.config import supabase
+# from src.summarization import summarize
 
 # Initialize Telethon client
 client = TelegramClient("parsing_2.session", API_ID, API_HASH)
+
 
 # Connect to Telegram client
 async def connect_client():
@@ -15,6 +18,7 @@ async def connect_client():
     if not client.is_connected():
         await client.start(phone=PHONE_NUMBER)
         print("Telethon client connected")
+
 
 # Get entity by name
 async def get_entity(entity_name):
@@ -25,6 +29,7 @@ async def get_entity(entity_name):
     except Exception as e:
         print(f"Failed to access {entity_name}: {e}")
         return None
+
 
 # Scrape messages from the channel
 async def scrape_messages(entity_name: str, limit: int = 400, time_range: str = "24h") -> List[Dict[str, Any]]:
@@ -75,14 +80,30 @@ async def scrape_messages(entity_name: str, limit: int = 400, time_range: str = 
 
     return messages
 
-async def get_user_digest(user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
-    """Get digest for specific user based on their channels"""
-    db_manager = DatabaseManager(supabase)
-    user_channels = await db_manager.get_user_channels(user_id)
+
+# async def get_user_digest(user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
+#     """Get digest for specific user based on their channels"""
+#     db_manager = DatabaseManager(supabase)
+#     user_channels = await db_manager.get_user_channels(user_id)
     
-    all_messages = []
-    for channel in user_channels:
-        messages = await scrape_messages(channel, time_range=time_range)
-        all_messages.extend(messages)
+#     all_messages = []
+#     for channel in user_channels:
+#         messages = await scrape_messages(channel, time_range=time_range)
+#         all_messages.extend(messages)
     
-    return all_messages
+#     return all_messages
+
+
+# async def create_and_save_digest(user_id: int):
+#     """Create a digest for a user and save it to the database."""
+#     db_manager = DatabaseManager(supabase)
+#     user_channels = await db_manager.get_user_channels(user_id)  # return list of channels for user
+    
+#     for channel in user_channels:
+#         messages = await scrape_messages(channel, limit=5, time_range="24h")
+#         if messages:
+#             creation_timestamp = datetime.now().isoformat()
+#             digest_content = summarize(messages, channel)
+#             success = await save_digest_to_db(user_id, channel, digest_content, creation_timestamp)
+#             if not success:
+#                 print(f"Failed to save digest for user {user_id} and channel {channel}")
