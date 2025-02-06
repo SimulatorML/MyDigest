@@ -2,10 +2,12 @@ import asyncio
 from datetime import datetime, timedelta
 from telethon import TelegramClient, errors
 from typing import List, Dict, Any
+
 from src.config.config import API_ID, API_HASH, PHONE_NUMBER, bot
 from src.data.database_manager import DatabaseManager
 from src.config.config import supabase
 from src.summarization import summarize
+
 
 class TelegramScraper:
     def __init__(self):

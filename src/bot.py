@@ -3,11 +3,12 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from src.commands import ALL_COMMANDS
-from src.handlers.digest import router as digest_router
+# from src.handlers.digest import router as digest_router
 from src.handlers.channels import router as channels_router
 from src.scraper import TelegramScraper
 
 scraper = TelegramScraper()
+
 
 class DigestBot:
     def __init__(self):
@@ -16,7 +17,7 @@ class DigestBot:
         self.dp = Dispatcher(storage=MemoryStorage())
         
         # Register routers
-        self.dp.include_router(digest_router)
+        # self.dp.include_router(digest_router)
         self.dp.include_router(channels_router)
 
     def start(self):
@@ -48,6 +49,7 @@ class DigestBot:
         """Shutdown handler"""
         logging.info("Bot is shutting down")
         await self.bot.session.close()
+
 
 if __name__ == '__main__':
     # Setup logging
