@@ -13,6 +13,8 @@ from src.data.database import (
     add_user_channels,
     delete_user_channels,
     clear_user_channels,
+    make_digest,
+    fetch_user_digests
 )
 
 
@@ -32,7 +34,8 @@ async def process_start_command(message: Message):
         "/show_channels - показать список ваших каналов\n"
         "/delete_channels - удалить каналы\n"
         "/clear_channels - полностью очистить список каналов\n"
-        "/help - показать эту справку"
+        "/help - показать эту справку\n"
+        "/daily_digest - показать сводки новостей за день\n"
     )
     user_id = message.from_user.id
     username = message.from_user.username if message.from_user.username else "unknown"
@@ -45,6 +48,12 @@ async def process_start_command(message: Message):
         await message.answer("Вы успешно зарегистрированы!")
     else:
         await message.answer("Вы уже зарегистрированы!")
+        # user_channels = await fetch_user_channels(user_id)
+        # if user_channels:
+        #     await make_digest(user_id)         # создание диджеста
+        #     await message.answer("Дайджест создан.")
+        #     await message.answer("Вот Дайджест из ваших каналов:\n")
+        #     await fetch_user_digests(user_id)  # Вывод дайджеста
 
 
 @router.message(Command(commands="help"))
@@ -56,7 +65,8 @@ async def process_help_command(message: Message):
         "/show_channels - показать список ваших каналов\n"
         "/delete_channels - удалить каналы\n"
         "/clear_channels - полностью очистить список каналов\n"
-        "/help - показать эту справку"
+        "/help - показать эту справку\n"
+        "/daily_digest - показать сводки новостей за день\n"
     )
 
 
@@ -89,9 +99,17 @@ async def process_channels_input(message: Message, state: FSMContext):
         return
 
     await fetch_user(user_id)
-    await add_user_channels(user_id, new_channels, addition_timestamp)
-    await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
-
+    success = await add_user_channels(user_id, new_channels, addition_timestamp)
+    if success:
+        await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
+        # user_channels = await fetch_user_channels(user_id)
+        # if user_channels:
+        #     await make_digest(user_id)
+        # await message.answer("Дайджест создан.")
+        # await message.answer("Вот Дайджест из ваших каналов:\n")
+        # await print(fetch_user_digests(user_id))  # Вывод дайджеста
+    else:
+        await message.answer("Произошла ошибка при добавлении каналов.")
     # Сбрасываем состояние
     await state.clear()
 
@@ -148,6 +166,17 @@ async def process_clear_command(message: Message):
     user_id = message.from_user.id
     await clear_user_channels(user_id)
     await message.answer("Все каналы удалены.")
+
+
+@router.message(Command("daily_digest"))
+async def daily_digest(message: Message) -> None:
+    user_id = message.from_user.id
+    digest = await make_digest(user_id, "24h")
+    if digest:
+        await message.answer("Дневной дайджест новостей:\n\n")
+        await fetch_user_digests(user_id)
+    else:
+        await message.answer("Не найдено ни одного сообщения для ежедневного дайджеста.")
 
 
 # Хэндлер для всех остальных сообщений
