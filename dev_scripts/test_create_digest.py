@@ -48,7 +48,7 @@ async def create_and_save_digest(user_id: int) -> None:
     
     # Получаем сообщения из канала
     for channel in channels:
-        messages = await scrape_messages(
+        messages = await scraper.scrape_messages(
             channel["channel_name"], limit=5, time_range="7d"
         )
         if not messages:
