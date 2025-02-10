@@ -140,9 +140,8 @@ class TelegramScraper:
             user_channels = await self.db_manager.get_user_channels(user_id)
 
             if not user_channels:
-                await bot.send_message(user_id, "Пожалуйста, добавьте каналы. Чтобы добавить канал, вызовите /add_channels")
-                await asyncio.sleep(600)
-                continue
+                await self.bot.send_message(user_id, "❌ У вас нет добавленных каналов. Используйте /add_channels.")
+                return
 
             #setting one hour to run the parser
             for channel in user_channels:
