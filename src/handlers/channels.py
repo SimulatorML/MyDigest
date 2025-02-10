@@ -178,6 +178,18 @@ async def daily_digest(message: Message) -> None:
     else:
         await message.answer("Не найдено ни одного сообщения для ежедневного дайджеста.")
 
+@router.message(Command("receive_news"))
+async def receive_news_handler(message: Message):
+    user_id = message.from_user.id
+    # Если уже запущена проверка – останавливаем её
+    if scraper.stop_auto_news_check(user_id):
+        await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
+
+    # Запускаем новую фоновaую проверку
+    task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=1800))
+    scraper.running_tasks[user_id] = task
+
+    await message.answer("✅ Фоновая проверка новостей запущена. Вы будете получать обновления каждые 30 минут.")
 
 # Хэндлер для всех остальных сообщений
 @router.message()
