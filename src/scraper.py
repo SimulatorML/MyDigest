@@ -157,9 +157,11 @@ class TelegramScraper:
                     msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= start_time
                 ]
 
-                if len(recent_messages) >= self.threshold_messages:
-                    summary = summarize(recent_messages, channel)
-                    await bot.send_message(user_id, f"📢 Дайджест за последний час для {channel}:\n\n{summary}")
+                if not recent_messages:
+                    continue
+
+                summary = summarize(recent_messages, channel)
+                await self.bot.send_message(user_id, f"📢 Дайджест за последний час для {channel}:\n\n{summary}")
 
         except Exception as e:
             logging.error(f"Ошибка в check_new_messages: {e}")
