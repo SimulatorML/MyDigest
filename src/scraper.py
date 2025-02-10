@@ -9,7 +9,6 @@ from src.data.database_manager import DatabaseManager
 from src.config.config import *
 from src.summarization import summarize
 
-
 class TelegramScraper:
     def __init__(self):
         """
