@@ -131,15 +131,9 @@ class TelegramScraper:
 
         return all_messages
 
-    async def check_new_messages(self, user_id: int):
-        """
-        Background task that continuously checks for new messages in the channels a user is subscribed to.
-        If the number of new messages in a channel within the last hour exceeds the threshold,
-        a digest is generated and sent to the user.
-        """
-        sent_digest_channels = set()
-
-        while True:
+    async def check_new_messages(self, user_id: int, time_range: str = "1h"):
+        """Проверяет новые сообщения и отправляет дайджест пользователю."""
+        try:
             user_channels = await self.db_manager.get_user_channels(user_id)
 
             if not user_channels:
