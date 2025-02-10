@@ -40,6 +40,7 @@ async def process_start_command(message: Message):
         "/clear_channels - полностью очистить список каналов\n"
         "/help - показать эту справку\n"
         "/daily_digest - показать сводки новостей за день\n"
+        "/receive_news - показывать сводки новостей за час\n"
     )
     user_id = message.from_user.id
     username = message.from_user.username if message.from_user.username else "unknown"
