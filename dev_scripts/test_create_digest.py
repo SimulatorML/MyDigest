@@ -9,7 +9,7 @@ from datetime import datetime
 from src.data.database import fetch_user, fetch_user_channels, save_user_digest
 from src.scraper import scrape_messages, connect_client
 from src.summarization import summarize
-from src.scraper import client
+from src.scraper import TelegramScraper
 
 
 async def create_and_save_digest(user_id: int) -> None:
