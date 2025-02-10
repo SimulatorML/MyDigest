@@ -168,3 +168,11 @@ class TelegramScraper:
         print(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
 
             sent_digest_channels.clear()
+
+    def stop_auto_news_check(self, user_id: int):
+        """Останавливает фоновую проверку новостей для пользователя."""
+        if user_id in self.running_tasks:
+            self.running_tasks[user_id].cancel()
+            del self.running_tasks[user_id]
+            return True
+        return False
