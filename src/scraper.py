@@ -143,7 +143,9 @@ class TelegramScraper:
                 await self.bot.send_message(user_id, "❌ У вас нет добавленных каналов. Используйте /add_channels.")
                 return
 
-            #setting one hour to run the parser
+            now = datetime.utcnow()
+            start_time = now - timedelta(hours=1) if time_range == "1h" else now - timedelta(minutes=30)
+
             for channel in user_channels:
                 now = datetime.utcnow()
                 one_hour_ago = now - timedelta(hours=1)
