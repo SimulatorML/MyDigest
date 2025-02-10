@@ -158,39 +158,39 @@ async def clear_user_channels(user_id: int) -> bool:
         SupabaseErrorHandler.handle_error(e, user_id)
 
 
-async def make_digest(user_id: int, time_range: str = "24h") -> None:
-    try:
-        exist_user = await fetch_user(user_id)
-        if not exist_user:
-            print(f"Пользователь {user_id} НЕ существует в БД")
-            return
-
-        user_channels = await fetch_user_channels(user_id) if exist_user else None
-
-        for channel in user_channels:
-            try:
-                messages = await scrape_messages(
-                    channel["channel_name"], limit=5, time_range=time_range
-                )  # scrape a limited numbers of messages from each channel over the last 24 hours
-                if not messages:
-                    print(f"Нет сообщений для канала {channel['channel_name']}.")
-                    continue
-                # if messages:
-                digest_content = summarize(messages, channel["channel_name"])
-                creation_timestamp = datetime.now().isoformat()
-                await save_user_digest(
-                    user_id, channel["channel_id"], digest_content, creation_timestamp
-                )
-
-            except Exception as e:
-                print(f"Ошибка при создании дайджеста для пользователя {user_id}: {e}")
-
-    except Exception as e:
-        print(f"Ошибка при обработке канала {channel['channel_name']}: {e}")
-
-    finally:
-        # Даем время на завершение фоновых задач - тогда RuntimeWarning возникает реже
-        await asyncio.sleep(1)
+# async def make_digest(user_id: int, time_range: str = "24h") -> None:
+#     try:
+#         exist_user = await fetch_user(user_id)
+#         if not exist_user:
+#             print(f"Пользователь {user_id} НЕ существует в БД")
+#             return
+#
+#         user_channels = await fetch_user_channels(user_id) if exist_user else None
+#
+#         for channel in user_channels:
+#             try:
+#                 messages = await scrape_messages(
+#                     channel["channel_name"], limit=5, time_range=time_range
+#                 )  # scrape a limited numbers of messages from each channel over the last 24 hours
+#                 if not messages:
+#                     print(f"Нет сообщений для канала {channel['channel_name']}.")
+#                     continue
+#                 # if messages:
+#                 digest_content = summarize(messages, channel["channel_name"])
+#                 creation_timestamp = datetime.now().isoformat()
+#                 await save_user_digest(
+#                     user_id, channel["channel_id"], digest_content, creation_timestamp
+#                 )
+#
+#             except Exception as e:
+#                 print(f"Ошибка при создании дайджеста для пользователя {user_id}: {e}")
+#
+#     except Exception as e:
+#         print(f"Ошибка при обработке канала {channel['channel_name']}: {e}")
+#
+#     finally:
+#         # Даем время на завершение фоновых задач - тогда RuntimeWarning возникает реже
+#         await asyncio.sleep(1)
 
 
 async def save_user_digest(
