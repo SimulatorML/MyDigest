@@ -3,8 +3,9 @@
 CONDA_ENV_NAME=mydigest
 PYTHON_VERSION=3.11
 
+
 setup:
-	@echo "Creating conda environment ..." 
+	@echo "Creating conda environment ..."
 	conda create -n ${CONDA_ENV_NAME} python=${PYTHON_VERSION} --yes
 	@echo "Installing requirements ..."
 	conda run -n ${CONDA_ENV_NAME} pip install -r requirements.txt

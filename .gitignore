@@ -1,11 +1,7 @@
 .env
 __pycache__/
 *.pyc
-__pycache__
-.venv
-/venv
-.vscode/
-.DS_store
-/config
+.venv1
+.idea
 bot.log
 *.session

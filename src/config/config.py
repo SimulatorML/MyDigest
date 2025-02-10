@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-from aiogram import Bot
 
 # Load environment variables
 load_dotenv()

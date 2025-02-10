@@ -4,9 +4,6 @@ from typing import List, Dict, Any
 from supabase import create_client, Client
 from supabase import AuthApiError, PostgrestAPIError
 from src.config.config import SUPABASE_URL, SUPABASE_KEY
-from src.scraper import scrape_messages
-from src.summarization import summarize
-
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -247,3 +244,4 @@ async def fetch_user_digests(user_id: int) -> List[str]:
         return [item["content"] for item in response.data] if response.data else None
     except Exception as e:
         SupabaseErrorHandler.handle_error(e, user_id)
+

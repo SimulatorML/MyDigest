@@ -7,7 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import asyncio
 from datetime import datetime
 from src.data.database import fetch_user, fetch_user_channels, save_user_digest
-from src.scraper import scrape_messages, connect_client
 from src.summarization import summarize
 from src.scraper import TelegramScraper
 

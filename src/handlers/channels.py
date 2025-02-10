@@ -15,7 +15,6 @@ from src.data.database import (
     add_user_channels,
     delete_user_channels,
     clear_user_channels,
-    make_digest,
     fetch_user_digests
     # make_digest
 )

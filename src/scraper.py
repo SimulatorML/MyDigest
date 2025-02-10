@@ -35,10 +35,8 @@ class TelegramScraper:
     async def get_entity(self, entity_name):
         """
         Fetches a Telegram entity (such as a channel or user) by its name.
-
         Args:
             entity_name (str): The username or channel name of the Telegram entity.
-
         Returns:
             dict or None: A dictionary representing the entity object if retrieval
             is successful, otherwise None if the entity is not found or an error occurs.
@@ -58,14 +56,12 @@ class TelegramScraper:
     async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[Dict[str, Any]]:
         """
         Scrapes messages from a given Telegram channel within a specified time range.
-
         Args:
             entity_name (str): The username or channel name of the Telegram entity.
             limit (int, optional): The maximum number of messages to scrape. Defaults to 400.
             time_range (str, optional): The time range for filtering messages.
                                         Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
                                         Defaults to "24h".
-
         Returns:
             List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
                 - 'message_id' (int): The unique ID of the message.
@@ -104,13 +100,11 @@ class TelegramScraper:
     async def get_user_digest(self, user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
         """
         Retrieves a digest of messages from the Telegram channels that a user is subscribed to.
-
         Args:
             user_id (int): The unique identifier of the Telegram user.
             time_range (str, optional): The time range for filtering messages.
                                         Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
                                         Defaults to "24h".
-
         Returns:
             List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
                 - 'message_id' (int): The unique ID of the message.
