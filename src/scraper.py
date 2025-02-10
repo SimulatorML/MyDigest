@@ -161,7 +161,9 @@ class TelegramScraper:
                     summary = summarize(recent_messages, channel)
                     await bot.send_message(user_id, f"📢 Дайджест за последний час для {channel}:\n\n{summary}")
 
-                    sent_digest_channels.add(channel)
+        except Exception as e:
+            logging.error(f"Ошибка в check_new_messages: {e}")
+            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
         """Фоновая проверка сообщений для конкретного пользователя каждые N секунд."""
