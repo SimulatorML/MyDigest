@@ -20,6 +20,8 @@ class TelegramScraper:
         self.client = TelegramClient("parsing_2.session", API_ID, API_HASH)
         self.db_manager = DatabaseManager(supabase)
         self.threshold_messages = 2
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        self.running_tasks = {}
 
     async def connect_client(self):
         """
