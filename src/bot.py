@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from src.commands import ALL_COMMANDS
+from src.config import TELEGRAM_BOT_TOKEN
 # from src.handlers.digest import router as digest_router
 from src.handlers.channels import router as channels_router
 from src.scraper import TelegramScraper
