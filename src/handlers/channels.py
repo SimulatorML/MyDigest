@@ -22,6 +22,7 @@ from src.data.database import (
 
 
 router = Router()
+scraper = TelegramScraper()
 
 class UserStates(StatesGroup):
     waiting_for_channels = State()
