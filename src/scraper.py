@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
+from aiogram import Bot
 from telethon import TelegramClient, errors
 from typing import List, Dict, Any
 
