@@ -154,7 +154,7 @@ class TelegramScraper:
                     continue
 
                 recent_messages = [
-                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= one_hour_ago
+                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= start_time
                 ]
 
                 if len(recent_messages) >= self.threshold_messages:
