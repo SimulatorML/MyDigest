@@ -190,7 +190,7 @@ async def receive_news_handler(message: Message):
     if scraper.stop_auto_news_check(user_id):
         await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
-    # Запускаем новую фоновaую проверку
+    # Запускаем новую фоновaaую проверку
     task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=1800))
     scraper.running_tasks[user_id] = task
 
