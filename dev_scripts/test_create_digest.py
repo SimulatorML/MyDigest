@@ -80,8 +80,8 @@ async def main():
         await asyncio.sleep(1)
         # Закрываем соединение с Telegram API
         try:
-            if client.is_connected():
-                await client.disconnect()
+            if scraper.client.is_connected():
+                await scraper.client.disconnect()
                 print("Соединение с Telegram API закрыто")
         except Exception as e:
             print(f"Ошибка при закрытии соединения с Telegram API: {e}")
