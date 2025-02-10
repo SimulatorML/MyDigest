@@ -163,6 +163,8 @@ class TelegramScraper:
 
                     sent_digest_channels.add(channel)
 
-            await asyncio.sleep(3600)
+    async def start_auto_news_check(self, user_id: int, interval: int = 1800):
+        """Фоновая проверка сообщений для конкретного пользователя каждые N секунд."""
+        print(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
 
             sent_digest_channels.clear()
