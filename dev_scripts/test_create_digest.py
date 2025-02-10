@@ -30,7 +30,7 @@ async def create_and_save_digest(user_id: int) -> None:
     """
 
     # Подключаемся к клиенту Telegram
-    await connect_client()
+    await scraper.connect_client()
 
     # Получаем пользователя
     exist_user = await fetch_user(user_id)
