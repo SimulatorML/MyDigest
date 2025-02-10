@@ -12,6 +12,8 @@ from src.summarization import summarize
 from src.scraper import TelegramScraper
 
 
+scraper = TelegramScraper()
+
 async def create_and_save_digest(user_id: int) -> None:
     """
     Create and save a digest for the specified user.
