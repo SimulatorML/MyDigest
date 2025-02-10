@@ -6,7 +6,7 @@ from telethon import TelegramClient, errors
 from typing import List, Dict, Any
 from src.data.database import supabase
 from src.data.database_manager import DatabaseManager
-from src.config.config import supabase
+from src.config.config import *
 from src.summarization import summarize
 
 
