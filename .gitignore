@@ -3,5 +3,11 @@ __pycache__/
 *.pyc
 .venv1
 .idea
+__pycache__
+.venv
+/venv
+.vscode/
+.DS_store
+/config
 bot.log
 *.session
