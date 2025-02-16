@@ -6,9 +6,12 @@ from src.commands import ALL_COMMANDS
 from src.config import TELEGRAM_BOT_TOKEN
 # from src.handlers.digest import router as digest_router
 from src.handlers.channels import router as channels_router
-from src.scraper import TelegramScraper
+# from src.scraper import TelegramScraper
+# from src.data.database import supabase
+# from src.data.database import SupabaseDB
 
-scraper = TelegramScraper()
+# scraper = TelegramScraper()
+# db = SupabaseDB(supabase)
 
 
 class DigestBot:
