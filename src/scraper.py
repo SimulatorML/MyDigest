@@ -16,13 +16,9 @@ def create_client(user_id):
 
 
 class TelegramScraper:
-    def __init__(self):
-        """
-        Initializes the TelegramScraper class by setting up the Telegram client, database manager,
-        and message threshold for sending digests.
-        """
-
-        self.client = TelegramClient("parsing_2.session", API_ID, API_HASH)
+    def __init__(self, user_id):
+        # Создаем клиента для конкретного пользователя
+        self.client = create_client(user_id)
         self.db = SupabaseDB(supabase)
         # self.threshold_messages = 2
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
