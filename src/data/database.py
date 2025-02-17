@@ -191,7 +191,7 @@ class SupabaseDB:
         """
         try:
             cutoff_time = (datetime.utcnow() - timedelta(days=1)).isoformat()
-            self.client.table("channel_news").delete().lt(
+            self.client.table("channels_news").delete().lt(
                 "addition_timestamp", cutoff_time
             ).execute()
         except Exception as e:
