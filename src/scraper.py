@@ -23,6 +23,7 @@ class TelegramScraper:
         # self.threshold_messages = 2
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.running_tasks = {}
+        self.summarizer = Summarization(api_key=MISTRAL_KEY)
 
     async def connect_client(self):
         """
