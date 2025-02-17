@@ -5,10 +5,9 @@ class Summarization:
         self.client = Mistral(api_key=api_key)
         self.model = model
 
-# first option
-def summarize(news: list, channel: str) -> list:
-
-    channel = channel.lstrip("@")
+    def summarize(self, news: list, channel: str) -> str:
+        # Убираем @ из начала имени канала, если он есть
+        channel = channel.lstrip("@")
 
     PROMPT = (f"Please create a summary of each piece of news provided. Here's the list: {news}. "
               f"Create a list with the same size as the number of news pieces provided. Use bullet points."
