@@ -1,9 +1,12 @@
 .env
 __pycache__/
 *.pyc
+.venv1
+.idea
 __pycache__
 .venv
 /venv
+myenv/
 .vscode/
 .DS_store
 /config

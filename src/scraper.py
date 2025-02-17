@@ -1,11 +1,12 @@
 import asyncio
+import logging
 from datetime import datetime, timedelta
+from aiogram import Bot
 from telethon import TelegramClient, errors
 from typing import List, Dict, Any
-
-from src.config.config import API_ID, API_HASH, PHONE_NUMBER, bot
-from src.data.database_manager import DatabaseManager
-from src.config.config import supabase
+from src.data.database import supabase
+from src.data.database import SupabaseDB
+from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER
 from src.summarization import summarize
 
 
@@ -17,8 +18,10 @@ class TelegramScraper:
         """
 
         self.client = TelegramClient("parsing_2.session", API_ID, API_HASH)
-        self.db_manager = DatabaseManager(supabase)
-        self.threshold_messages = 2
+        self.db = SupabaseDB(supabase)
+        # self.threshold_messages = 2
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        self.running_tasks = {}
 
     async def connect_client(self):
         """
@@ -33,10 +36,8 @@ class TelegramScraper:
     async def get_entity(self, entity_name):
         """
         Fetches a Telegram entity (such as a channel or user) by its name.
-
         Args:
             entity_name (str): The username or channel name of the Telegram entity.
-
         Returns:
             dict or None: A dictionary representing the entity object if retrieval
             is successful, otherwise None if the entity is not found or an error occurs.
@@ -56,14 +57,12 @@ class TelegramScraper:
     async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[Dict[str, Any]]:
         """
         Scrapes messages from a given Telegram channel within a specified time range.
-
         Args:
             entity_name (str): The username or channel name of the Telegram entity.
             limit (int, optional): The maximum number of messages to scrape. Defaults to 400.
             time_range (str, optional): The time range for filtering messages.
                                         Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
                                         Defaults to "24h".
-
         Returns:
             List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
                 - 'message_id' (int): The unique ID of the message.
@@ -99,76 +98,84 @@ class TelegramScraper:
 
         return messages
 
-    async def get_user_digest(self, user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
-        """
-        Retrieves a digest of messages from the Telegram channels that a user is subscribed to.
+    # async def get_user_digest(self, user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
+    #     """
+    #     Retrieves a digest of messages from the Telegram channels that a user is subscribed to.
+    #     Args:
+    #         user_id (int): The unique identifier of the Telegram user.
+    #         time_range (str, optional): The time range for filtering messages.
+    #                                     Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
+    #                                     Defaults to "24h".
+    #     Returns:
+    #         List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
+    #             - 'message_id' (int): The unique ID of the message.
+    #             - 'message' (str): The text content of the message.
+    #             - 'message_date' (datetime): The timestamp of when the message was sent.
+    #             - 'channel' (str): The name of the channel the message belongs to.
+    #         Returns an empty list if the user is not subscribed to any channels or no messages are found.
+    #     """
+    #     user_channels = await self.db.fetch_user_channels(user_id)
 
-        Args:
-            user_id (int): The unique identifier of the Telegram user.
-            time_range (str, optional): The time range for filtering messages.
-                                        Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
-                                        Defaults to "24h".
+    #     if not user_channels:
+    #         return []
 
-        Returns:
-            List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
-                - 'message_id' (int): The unique ID of the message.
-                - 'message' (str): The text content of the message.
-                - 'message_date' (datetime): The timestamp of when the message was sent.
-                - 'channel' (str): The name of the channel the message belongs to.
-            Returns an empty list if the user is not subscribed to any channels or no messages are found.
-        """
-        user_channels = await self.db_manager.get_user_channels(user_id)
+    #     all_messages = []
+    #     for channel in user_channels:
+    #         messages = await self.scrape_messages(channel["channel_name"], time_range=time_range)
+    #         for msg in messages:
+    #             msg["channel"] = channel["channel_name"]
+    #         all_messages.extend(messages)
 
-        if not user_channels:
-            return []
+    #     return all_messages
 
-        all_messages = []
-        for channel in user_channels:
-            messages = await self.scrape_messages(channel, time_range=time_range)
-            for msg in messages:
-                msg["channel"] = channel
-            all_messages.extend(messages)
-
-        return all_messages
-
-    async def check_new_messages(self, user_id: int):
-        """
-        Background task that continuously checks for new messages in the channels a user is subscribed to.
-        If the number of new messages in a channel within the last hour exceeds the threshold,
-        a digest is generated and sent to the user.
-        """
-        sent_digest_channels = set()
-
-        while True:
-            user_channels = await self.db_manager.get_user_channels(user_id)
-
+    async def check_new_messages(self, user_id: int, time_range: str = "1h"):
+        """Проверяет новые сообщения и отправляет дайджест пользователю."""
+        try:
+            user_channels = await self.db.fetch_user_channels(user_id)
             if not user_channels:
-                await bot.send_message(user_id, "Пожалуйста, добавьте каналы. Чтобы добавить канал, вызовите /add_channels")
-                await asyncio.sleep(600)
-                continue
+                await self.bot.send_message(user_id, "❌ У вас нет добавленных каналов. Используйте /add_channels.")
+                return
 
-            #setting one hour to run the parser
+            now = datetime.utcnow()
+            start_time = now - timedelta(hours=1) if time_range == "1h" else now - timedelta(minutes=30)
+
             for channel in user_channels:
-                now = datetime.utcnow()
-                one_hour_ago = now - timedelta(hours=1)
-
-                if channel in sent_digest_channels:
-                    continue
-
-                messages = await self.scrape_messages(channel, limit=100)
+                messages = await self.scrape_messages(channel["channel_name"], limit=100)
                 if not messages:
                     continue
 
                 recent_messages = [
-                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= one_hour_ago
+                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= start_time
                 ]
 
-                if len(recent_messages) >= self.threshold_messages:
-                    summary = summarize(recent_messages, channel)
-                    await bot.send_message(user_id, f"📢 Дайджест за последний час для {channel}:\n\n{summary}")
+                for msg in recent_messages:
+                    await self.db.save_channel_news(channel["channel_id"], msg["message"], msg["message_date"].isoformat())
 
-                    sent_digest_channels.add(channel)
+                if recent_messages:
+                    digest = summarize(recent_messages, channel["channel_name"])
+                    creation_timestamp = datetime.now().isoformat()
+                    await self.db.save_user_digest(user_id, channel["channel_id"], digest, creation_timestamp)
+                    await self.bot.send_message(user_id, f"📢 Дайджест за последний час для {channel['channel_name']}:\n\n{digest}")
 
-            await asyncio.sleep(3600)
+        except Exception as e:
+            logging.error(f"Ошибка в check_new_messages: {e}")
+            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
-            sent_digest_channels.clear()
+    async def start_auto_news_check(self, user_id: int, interval: int = 1800):
+        """Фоновая проверка сообщений для конкретного пользователя каждые N секунд."""
+        print(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
+        
+        while user_id in self.running_tasks:
+            print(f"🔄 Проверка новых сообщений для {user_id}...")
+            await self.check_new_messages(user_id, time_range="1h")  # Проверяем новые сообщения за последний час
+            print(f"✅ Проверка завершена. Следующая через {interval // 60} минут.")
+            await asyncio.sleep(interval)  # Ждем перед следующей проверкой
+        await self.db.cleanup_old_news()
+
+    def stop_auto_news_check(self, user_id: int):
+        """Останавливает фоновую проверку новостей для пользователя."""
+        if user_id in self.running_tasks:
+            self.running_tasks[user_id].cancel()
+            del self.running_tasks[user_id]
+            return True
+        return False

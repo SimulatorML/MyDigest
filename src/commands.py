@@ -14,6 +14,7 @@ CHANNEL_COMMANDS = [
 DIGEST_COMMANDS = [
     BotCommand(command="daily_digest", description="Дайджест за день"),
     BotCommand(command="weekly_digest", description="Дайджест за неделю"),
+    BotCommand(command="receive_news", description="Получить новые сообщения")
 ]
 
 # Общие команды
