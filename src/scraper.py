@@ -153,7 +153,7 @@ class TelegramScraper:
                                                     msg["message_date"].isoformat())
 
                 if recent_messages:
-                    digest = summarize(recent_messages, channel["channel_name"])
+                    digest = self.summarizer.summarize(recent_messages, channel["channel_name"])
                     creation_timestamp = datetime.now().isoformat()
                     await self.db.save_user_digest(user_id, channel["channel_id"], digest, creation_timestamp)
                     await self.bot.send_message(user_id, f"📢 Дайджест за последний час для {channel['channel_name']}:\n\n{digest}")
