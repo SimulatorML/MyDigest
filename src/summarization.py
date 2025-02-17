@@ -1,5 +1,9 @@
 from mistralai import Mistral
 
+class Summarization:
+    def __init__(self, api_key: str, model: str = "mistral-large-latest"):
+        self.client = Mistral(api_key=api_key)
+        self.model = model
 
 # first option
 def summarize(news: list, channel: str) -> list:
