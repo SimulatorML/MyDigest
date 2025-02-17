@@ -6,8 +6,13 @@ from telethon import TelegramClient, errors
 from typing import List, Dict, Any
 from src.data.database import supabase
 from src.data.database import SupabaseDB
-from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER
-from src.summarization import summarize
+from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
+from src.summarization import Summarization
+
+
+def create_client(user_id):
+    session_name = f"user_{user_id}.session"
+    return TelegramClient(session_name, API_ID, API_HASH)
 
 
 class TelegramScraper:
