@@ -168,7 +168,7 @@ class SupabaseDB:
         """
         try:
             response = (
-                self.client.table("channel_news")
+                self.client.table("channels_news")
                 .upsert(
                     {
                         "channel_id": channel_id,
