@@ -1,4 +1,4 @@
-from g4f.client import Client
+from mistralai import Mistral
 
 
 # first option
