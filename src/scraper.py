@@ -149,7 +149,8 @@ class TelegramScraper:
                 ]
 
                 for msg in recent_messages:
-                    await self.db.save_channel_news(channel["channel_id"], msg["message"], msg["message_date"].isoformat())
+                    await self.db.save_channel_news(channel["channel_id"], msg["message"],
+                                                    msg["message_date"].isoformat())
 
                 if recent_messages:
                     digest = summarize(recent_messages, channel["channel_name"])
