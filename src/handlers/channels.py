@@ -23,7 +23,6 @@ from src.data.database import SupabaseDB
 
 
 router = Router()
-scraper = TelegramScraper()
 db = SupabaseDB(supabase)
 
 
