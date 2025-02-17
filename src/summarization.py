@@ -18,14 +18,12 @@ class Summarization:
             f"Structure the output as follows:\nLinks must be on the next line after the summary."
         )
 
-    client = Client()
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": PROMPT}],
-            web_search=False
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        print(f"Ошибка генерации дайджеста: {e}")
-        return None
+        try:
+            response = self.client.chat.complete(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Ошибка генерации дайджеста: {e}")
+            return None
