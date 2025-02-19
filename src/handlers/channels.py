@@ -193,6 +193,7 @@ async def receive_news_handler(message: Message):
     divider = 60    # modifiable
 
     user_id = message.from_user.id
+    scraper = TelegramScraper(user_id)
     if scraper.stop_auto_news_check(user_id):
         await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
