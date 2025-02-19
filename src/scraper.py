@@ -10,14 +10,19 @@ from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER
 from src.summarization import summarize
 
 
+def create_client(user_id):
+    session_name = f"user_{user_id}.session"
+    return TelegramClient(session_name, API_ID, API_HASH)
+
+
 class TelegramScraper:
-    def __init__(self):
+    def __init__(self, user_id=None):
         """
         Initializes the TelegramScraper class by setting up the Telegram client, database manager,
         and message threshold for sending digests.
         """
 
-        self.client = TelegramClient("parsing_2.session", API_ID, API_HASH)
+        self.client = create_client(user_id)
         self.db = SupabaseDB(supabase)
         # self.threshold_messages = 2
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
@@ -149,7 +154,7 @@ class TelegramScraper:
                 ]
 
                 for msg in recent_messages:
-                    await self.db.save_channel_news(channel["channel_id"], msg["message"], msg["message_date"].isoformat())
+                    await self.db.save_channels_news(channel["channel_id"], msg["message"], msg["message_date"].isoformat())
 
                 if recent_messages:
                     digest = summarize(recent_messages, channel["channel_name"])
