@@ -155,7 +155,7 @@ class SupabaseDB:
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
-    async def save_channel_news(
+    async def save_channels_news(
         self, channel_id: int, news: str, addition_timestamp: str
     ) -> bool:
         """
@@ -168,7 +168,7 @@ class SupabaseDB:
         """
         try:
             response = (
-                self.client.table("channel_news")
+                self.client.table("channels_news")
                 .upsert(
                     {
                         "channel_id": channel_id,
