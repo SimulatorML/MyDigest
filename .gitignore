@@ -12,3 +12,5 @@ myenv/
 /config
 bot.log
 *.session
+mydigest/
+*.session-journal
