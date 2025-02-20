@@ -12,7 +12,7 @@ setup:
 
 run:
 	@echo "Running bot ..."
-	PYTHONPATH=$(PWD) conda run -n ${CONDA_ENV_NAME} python src/bot.py
+	conda run -n ${CONDA_ENV_NAME} python -m src.bot
 
 clean:
 	@echo "Removing conda environment ..."
