@@ -18,10 +18,10 @@ A news aggregator bot that provides users with personalized, concise daily diges
    cd MyDigest
    ```
 
-2. **Setup with Conda (recommended)**:
+2. **Setup with Makefile (recommended)**:
    ```bash
    make setup
-   conda activate mydigest
+   source mydigest/bin/activate # On Windows use: mydigest\Scripts\activate
    make run
    ```
 
@@ -30,7 +30,7 @@ A news aggregator bot that provides users with personalized, concise daily diges
    python -m venv venv
    source venv/bin/activate  # On Windows use: venv\Scripts\activate
    pip install -r requirements.txt
-   python src/bot.py
+   python -m src.bot
    ```
 
 ## Development

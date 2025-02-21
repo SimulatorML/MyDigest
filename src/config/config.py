@@ -19,5 +19,5 @@ PHONE_NUMBER = os.getenv('TELEGRAM_PHONE_NUMBER')
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
-#LLM configuration
+# LLM configuration
 MISTRAL_KEY = os.getenv('MISTRAL_KEY')
