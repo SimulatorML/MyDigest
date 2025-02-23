@@ -174,18 +174,6 @@ async def process_clear_command(message: Message):
     await db.clear_user_channels(user_id)
     await message.answer("Все каналы удалены.")
 
-
-# @router.message(Command("daily_digest"))
-# async def daily_digest(message: Message) -> None:
-#     user_id = message.from_user.id
-#     digest = await make_digest(user_id, "24h")
-#     if digest:
-#         await message.answer("Дневной дайджест новостей:\n\n")
-#         await fetch_user_digests(user_id)
-#     else:
-#         await message.answer("Не найдено ни одного сообщения для ежедневного дайджеста.")
-
-
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
     interval = 600  # modifiable
