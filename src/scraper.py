@@ -16,6 +16,7 @@ def create_client(user_id):
 
 
 class TelegramScraper:
+    running_tasks = {}
     def __init__(self, user_id):
         # Создаем клиента для конкретного пользователя
         self.client = create_client(user_id)
