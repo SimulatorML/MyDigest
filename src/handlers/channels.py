@@ -127,7 +127,7 @@ async def process_show_channels_command(message: Message):
     channels = await db.fetch_user_channels(user_id)
 
     if channels is not None:
-        channel_names = set(channel["channel_name"] for channel in channels)
+        channel_names = [channel["channel_name"] for channel in channels]
         await message.answer(f"Ваши каналы:\n{', '.join(channel_names)}")
     else:
         await message.answer("У вас пока нет добавленных каналов.")
