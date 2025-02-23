@@ -111,6 +111,7 @@ class TelegramScraper:
 
             now = datetime.utcnow()
             start_time = now - timedelta(hours=1) if time_range == "1h" else now - timedelta(minutes=30)
+            aggregated_news = []
 
             for channel in user_channels:
                 messages = await self.scrape_messages(channel["channel_name"], limit=100)
