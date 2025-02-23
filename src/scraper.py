@@ -150,7 +150,7 @@ class TelegramScraper:
         # очистка старых новостей из таблицы channels_news при запуске проверки
         await self.db.cleanup_old_news()
 
-        while user_id in self.running_tasks:
+        while user_id in TelegramScraper.running_tasks:
             print(f"🔄 Проверка новых сообщений для {user_id}...")
             await self.check_new_messages(user_id, time_range="1h")  # Проверяем новые сообщения за последний час
             print(f"✅ Проверка завершена {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Следующая через {interval // 60} минут.")
