@@ -126,12 +126,18 @@ class TelegramScraper:
                     await self.db.save_channel_news(channel["channel_id"], msg["message"],
                                                     msg["message_date"].isoformat())
 
-                if recent_messages:
-                    digest = self.summarizer.summarize(recent_messages, channel["channel_name"])
-                    creation_timestamp = datetime.now().isoformat()
-                    await self.db.save_user_digest(user_id, channel["channel_id"], digest, creation_timestamp)
-                    await self.bot.send_message(user_id,
-                                                f"📢 Дайджест за последний час для {channel['channel_name']}:\n\n{digest}")
+                    aggregated_news.append({
+                        "channel": channel["channel_name"].lstrip("@"),
+                        "message": msg["message"],
+                        "message_id": msg["message_id"]
+                    })
+                await asyncio.sleep(3)
+
+            if aggregated_news:
+                digest = self.summarizer.summarize(aggregated_news)
+                creation_timestamp = datetime.now().isoformat()
+                await self.db.save_user_digest(user_id, "171", digest, creation_timestamp)
+                await self.bot.send_message(user_id, f"📢 Ваш дайджест:\n\n{digest}")
 
         except Exception as e:
             logging.error(f"Ошибка в check_new_messages: {e}")
