@@ -188,7 +188,7 @@ async def process_clear_command(message: Message):
 
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
-    interval = 300  # modifiable
+    interval = 600  # modifiable
     divider = 60    # modifiable
 
     user_id = message.from_user.id
