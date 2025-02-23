@@ -198,7 +198,7 @@ async def receive_news_handler(message: Message):
         await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
     task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))   #1800 было
-    scraper.running_tasks[user_id] = task
+    TelegramScraper.running_tasks[user_id] = task
 
     # logger.info(f"Фоновая проверка новостей запущена для пользователя {user_id}.")
     await message.answer(f"✅ Фоновая проверка новостей запущена. Вы будете получать обновления каждые {interval // divider} минут.")
