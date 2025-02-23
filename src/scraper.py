@@ -158,8 +158,8 @@ class TelegramScraper:
 
     def stop_auto_news_check(self, user_id: int):
         """Останавливает фоновую проверку новостей для пользователя."""
-        if user_id in self.running_tasks:
-            self.running_tasks[user_id].cancel()
-            del self.running_tasks[user_id]
+        if user_id in TelegramScraper.running_tasks:
+            TelegramScraper.running_tasks[user_id].cancel()
+            del TelegramScraper.running_tasks[user_id]
             return True
         return False
