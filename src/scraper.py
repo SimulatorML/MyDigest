@@ -101,36 +101,6 @@ class TelegramScraper:
 
         return messages
 
-    # async def get_user_digest(self, user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
-    #     """
-    #     Retrieves a digest of messages from the Telegram channels that a user is subscribed to.
-    #     Args:
-    #         user_id (int): The unique identifier of the Telegram user.
-    #         time_range (str, optional): The time range for filtering messages.
-    #                                     Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
-    #                                     Defaults to "24h".
-    #     Returns:
-    #         List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
-    #             - 'message_id' (int): The unique ID of the message.
-    #             - 'message' (str): The text content of the message.
-    #             - 'message_date' (datetime): The timestamp of when the message was sent.
-    #             - 'channel' (str): The name of the channel the message belongs to.
-    #         Returns an empty list if the user is not subscribed to any channels or no messages are found.
-    #     """
-    #     user_channels = await self.db.fetch_user_channels(user_id)
-
-    #     if not user_channels:
-    #         return []
-
-    #     all_messages = []
-    #     for channel in user_channels:
-    #         messages = await self.scrape_messages(channel["channel_name"], time_range=time_range)
-    #         for msg in messages:
-    #             msg["channel"] = channel["channel_name"]
-    #         all_messages.extend(messages)
-
-    #     return all_messages
-
     async def check_new_messages(self, user_id: int, time_range: str = "1h"):
         """Проверяет новые сообщения и отправляет дайджест пользователю."""
         try:
