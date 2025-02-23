@@ -5,10 +5,15 @@ class Summarization:
         self.client = Mistral(api_key=api_key)
         self.model = model
 
-    def summarize(self, news: list, channel: str) -> str:
-        # Убираем @ из начала имени канала, если он есть
-        channel = channel.lstrip("@")
-
+    def summarize(self, news: list) -> str:
+        """
+        news: list of dictionaries with keys:
+              - 'channel': channel name (without the '@')
+              - 'message': text of the news
+              - 'message_id': unique id of the message
+        Example item:
+              {'channel': 'exampleChannel', 'message': 'Some news text', 'message_id': '12345'}
+        """
         prompt = (
             "Please create a summary of the news provided. "
             "Each news item is represented as a dictionary with keys 'channel', 'message', and 'message_id'. "
