@@ -92,7 +92,10 @@ class SupabaseDB:
                 .eq("user_id", user_id)
                 .execute()
             )
-            return response.data if response.data else []
+            return response.data if response.data else None
+            # data = response.data if response.data else []
+            # unique_channels = {channel["channel_name"]: channel for channel in data}
+            # return list(unique_channels.values())
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
@@ -108,7 +111,11 @@ class SupabaseDB:
                                     Defaults to the current time if not provided.
         :return: True if the operation was successful, otherwise handles exceptions.
         """
+
         try:
+            existing_channels = await self.fetch_user_channels(user_id)
+            existing_channel_names = {channel["channel_name"] for channel in existing_channels} if existing_channels else set()
+
             data = [
                 {
                     "user_id": user_id,
@@ -117,11 +124,15 @@ class SupabaseDB:
                     "addition_timestamp": addition_timestamp,
                 }
                 for channel in channels
+                if channel not in existing_channel_names
             ]
 
-            response = self.client.table("user_channels").upsert(data).execute()
-
-            return bool(response.data)
+            if data:
+                response = self.client.table("user_channels").upsert(data).execute()
+                return bool(response.data)
+            else:
+                print("Каналы уже существуют, ничего не добавлено.")
+                return False
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
@@ -168,7 +179,7 @@ class SupabaseDB:
         """
         try:
             response = (
-                self.client.table("channel_news")
+                self.client.table("channels_news")
                 .upsert(
                     {
                         "channel_id": channel_id,
@@ -191,7 +202,7 @@ class SupabaseDB:
         """
         try:
             cutoff_time = (datetime.utcnow() - timedelta(days=1)).isoformat()
-            self.client.table("channel_news").delete().lt(
+            self.client.table("channels_news").delete().lt(
                 "addition_timestamp", cutoff_time
             ).execute()
         except Exception as e:
@@ -200,7 +211,6 @@ class SupabaseDB:
     async def save_user_digest(
         self,
         user_id: int,
-        channel_id: int,
         digest_content: str,
         creation_timestamp: str,
     ) -> bool:
@@ -219,7 +229,6 @@ class SupabaseDB:
                 .upsert(
                     {
                         "user_id": user_id,
-                        "channel_id": channel_id,
                         "digest_content": digest_content,
                         "creation_timestamp": creation_timestamp,
                     }
@@ -228,5 +237,5 @@ class SupabaseDB:
             )
             return bool(response.data)
         except Exception as e:
-            SupabaseErrorHandler.handle_error(e, user_id, channel_id)
+            SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
