@@ -174,21 +174,9 @@ async def process_clear_command(message: Message):
     await db.clear_user_channels(user_id)
     await message.answer("Все каналы удалены.")
 
-
-# @router.message(Command("daily_digest"))
-# async def daily_digest(message: Message) -> None:
-#     user_id = message.from_user.id
-#     digest = await make_digest(user_id, "24h")
-#     if digest:
-#         await message.answer("Дневной дайджест новостей:\n\n")
-#         await fetch_user_digests(user_id)
-#     else:
-#         await message.answer("Не найдено ни одного сообщения для ежедневного дайджеста.")
-
-
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
-    interval = 300  # modifiable
+    interval = 600  # modifiable
     divider = 60    # modifiable
 
     user_id = message.from_user.id
@@ -198,7 +186,7 @@ async def receive_news_handler(message: Message):
         await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
     task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))   #1800 было
-    scraper.running_tasks[user_id] = task
+    TelegramScraper.running_tasks[user_id] = task
 
     # logger.info(f"Фоновая проверка новостей запущена для пользователя {user_id}.")
     await message.answer(f"✅ Фоновая проверка новостей запущена. Вы будете получать обновления каждые {interval // divider} минут.")

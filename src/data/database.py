@@ -92,7 +92,9 @@ class SupabaseDB:
                 .eq("user_id", user_id)
                 .execute()
             )
-            return response.data if response.data else []
+            data = response.data if response.data else []
+            unique_channels = {channel["channel_name"]: channel for channel in data}
+            return list(unique_channels.values())
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 

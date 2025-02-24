@@ -16,6 +16,7 @@ def create_client(user_id):
 
 
 class TelegramScraper:
+    running_tasks = {}
     def __init__(self, user_id):
         # Создаем клиента для конкретного пользователя
         self.client = create_client(user_id)
@@ -101,36 +102,6 @@ class TelegramScraper:
 
         return messages
 
-    # async def get_user_digest(self, user_id: int, time_range: str = "24h") -> List[Dict[str, Any]]:
-    #     """
-    #     Retrieves a digest of messages from the Telegram channels that a user is subscribed to.
-    #     Args:
-    #         user_id (int): The unique identifier of the Telegram user.
-    #         time_range (str, optional): The time range for filtering messages.
-    #                                     Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
-    #                                     Defaults to "24h".
-    #     Returns:
-    #         List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
-    #             - 'message_id' (int): The unique ID of the message.
-    #             - 'message' (str): The text content of the message.
-    #             - 'message_date' (datetime): The timestamp of when the message was sent.
-    #             - 'channel' (str): The name of the channel the message belongs to.
-    #         Returns an empty list if the user is not subscribed to any channels or no messages are found.
-    #     """
-    #     user_channels = await self.db.fetch_user_channels(user_id)
-
-    #     if not user_channels:
-    #         return []
-
-    #     all_messages = []
-    #     for channel in user_channels:
-    #         messages = await self.scrape_messages(channel["channel_name"], time_range=time_range)
-    #         for msg in messages:
-    #             msg["channel"] = channel["channel_name"]
-    #         all_messages.extend(messages)
-
-    #     return all_messages
-
     async def check_new_messages(self, user_id: int, time_range: str = "1h"):
         """Проверяет новые сообщения и отправляет дайджест пользователю."""
         try:
@@ -141,6 +112,7 @@ class TelegramScraper:
 
             now = datetime.utcnow()
             start_time = now - timedelta(hours=1) if time_range == "1h" else now - timedelta(minutes=30)
+            aggregated_news = []
 
             for channel in user_channels:
                 messages = await self.scrape_messages(channel["channel_name"], limit=100)
@@ -155,12 +127,18 @@ class TelegramScraper:
                     await self.db.save_channel_news(channel["channel_id"], msg["message"],
                                                     msg["message_date"].isoformat())
 
-                if recent_messages:
-                    digest = self.summarizer.summarize(recent_messages, channel["channel_name"])
-                    creation_timestamp = datetime.now().isoformat()
-                    await self.db.save_user_digest(user_id, channel["channel_id"], digest, creation_timestamp)
-                    await self.bot.send_message(user_id,
-                                                f"📢 Дайджест за последний час для {channel['channel_name']}:\n\n{digest}")
+                    aggregated_news.append({
+                        "channel": channel["channel_name"].lstrip("@"),
+                        "message": msg["message"],
+                        "message_id": msg["message_id"]
+                    })
+                await asyncio.sleep(3)
+
+            if aggregated_news:
+                digest = self.summarizer.summarize(aggregated_news)
+                creation_timestamp = datetime.now().isoformat()
+                await self.db.save_user_digest(user_id, "171", digest, creation_timestamp)
+                await self.bot.send_message(user_id, f"📢 Ваш дайджест:\n\n{digest}")
 
         except Exception as e:
             logging.error(f"Ошибка в check_new_messages: {e}")
@@ -173,7 +151,7 @@ class TelegramScraper:
         # очистка старых новостей из таблицы channels_news при запуске проверки
         await self.db.cleanup_old_news()
 
-        while user_id in self.running_tasks:
+        while user_id in TelegramScraper.running_tasks:
             print(f"🔄 Проверка новых сообщений для {user_id}...")
             await self.check_new_messages(user_id, time_range="1h")  # Проверяем новые сообщения за последний час
             print(f"✅ Проверка завершена {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Следующая через {interval // 60} минут.")
@@ -181,8 +159,8 @@ class TelegramScraper:
 
     def stop_auto_news_check(self, user_id: int):
         """Останавливает фоновую проверку новостей для пользователя."""
-        if user_id in self.running_tasks:
-            self.running_tasks[user_id].cancel()
-            del self.running_tasks[user_id]
+        if user_id in TelegramScraper.running_tasks:
+            TelegramScraper.running_tasks[user_id].cancel()
+            del TelegramScraper.running_tasks[user_id]
             return True
         return False
