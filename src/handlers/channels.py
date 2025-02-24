@@ -10,17 +10,6 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 
-# from src.data.database import (
-#     fetch_user,
-#     fetch_user_channels,
-#     add_user,
-#     add_user_channels,
-#     delete_user_channels,
-#     clear_user_channels,
-#     # fetch_user_digests
-#     # make_digest
-# )
-
 
 router = Router()
 db = SupabaseDB(supabase)
