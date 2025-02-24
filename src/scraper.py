@@ -137,7 +137,7 @@ class TelegramScraper:
             if aggregated_news:
                 digest = self.summarizer.summarize(aggregated_news)
                 creation_timestamp = datetime.now().isoformat()
-                await self.db.save_user_digest(user_id, "171", digest, creation_timestamp)
+                await self.db.save_user_digest(user_id, digest, creation_timestamp)
                 await self.bot.send_message(user_id, f"📢 Ваш дайджест:\n\n{digest}")
 
         except Exception as e:
