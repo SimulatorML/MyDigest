@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS channels_news (
 CREATE TABLE IF NOT EXISTS digests (
     digest_id int8 NOT NULL PRIMARY KEY,
     user_id int8 NOT NULL REFERENCES users(user_id),
-    channel_id int8 NOT NULL REFERENCES user_channels(channel_id),
     digest_content varchar(255) NOT NULL,
     creation_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP WITHOUT TIME ZONE
 );
