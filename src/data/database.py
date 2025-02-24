@@ -92,9 +92,10 @@ class SupabaseDB:
                 .eq("user_id", user_id)
                 .execute()
             )
-            data = response.data if response.data else []
-            unique_channels = {channel["channel_name"]: channel for channel in data}
-            return list(unique_channels.values())
+            return response.data if response.data else None
+            # data = response.data if response.data else []
+            # unique_channels = {channel["channel_name"]: channel for channel in data}
+            # return list(unique_channels.values())
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
@@ -110,7 +111,11 @@ class SupabaseDB:
                                     Defaults to the current time if not provided.
         :return: True if the operation was successful, otherwise handles exceptions.
         """
+
         try:
+            existing_channels = await self.fetch_user_channels(user_id)
+            existing_channel_names = {channel["channel_name"] for channel in existing_channels} if existing_channels else set()
+
             data = [
                 {
                     "user_id": user_id,
@@ -119,11 +124,15 @@ class SupabaseDB:
                     "addition_timestamp": addition_timestamp,
                 }
                 for channel in channels
+                if channel not in existing_channel_names
             ]
 
-            response = self.client.table("user_channels").upsert(data).execute()
-
-            return bool(response.data)
+            if data:
+                response = self.client.table("user_channels").upsert(data).execute()
+                return bool(response.data)
+            else:
+                print("Каналы уже существуют, ничего не добавлено.")
+                return False
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
