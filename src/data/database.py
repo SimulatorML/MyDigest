@@ -202,7 +202,6 @@ class SupabaseDB:
     async def save_user_digest(
         self,
         user_id: int,
-        channel_id: int,
         digest_content: str,
         creation_timestamp: str,
     ) -> bool:
@@ -221,7 +220,6 @@ class SupabaseDB:
                 .upsert(
                     {
                         "user_id": user_id,
-                        "channel_id": channel_id,
                         "digest_content": digest_content,
                         "creation_timestamp": creation_timestamp,
                     }
@@ -230,5 +228,5 @@ class SupabaseDB:
             )
             return bool(response.data)
         except Exception as e:
-            SupabaseErrorHandler.handle_error(e, user_id, channel_id)
+            SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
