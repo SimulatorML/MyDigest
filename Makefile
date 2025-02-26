@@ -6,8 +6,8 @@ PYTHON_VERSION=python3
 
 # Determine OS and adjust paths
 ifeq ($(OS),Windows_NT)
-    VENV_BIN = $(VENV_NAME)/Scripts
-    PYTHON_VERSION = python
+	VENV_BIN = $(VENV_NAME)/Scripts
+	PYTHON_VERSION = python
 endif
 
 setup:
@@ -24,10 +24,10 @@ clean:
 	ifeq ($(OS),Windows_NT)
 	@echo "Removing environment (Windows)..."
 	rmdir /s /q $(VENV_NAME)
-else
+	else
 	@echo "Removing environment (macOS/Linux)..."
 	rm -rf $(VENV_NAME)
-endif
+	endif
 
 help:
 	@echo "Available commands:"
