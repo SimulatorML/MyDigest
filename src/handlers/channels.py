@@ -22,7 +22,7 @@ class UserStates(StatesGroup):
 
 @router.message(CommandStart())
 async def process_start_command(message: Message):
-    await message.answer(
+    sent_message = await message.answer(
         "Привет! Я бот для создания дайджестов из Telegram каналов.\n"
         "Используйте следующие команды:\n"
         "/add_channels - добавить каналы\n"
@@ -33,6 +33,10 @@ async def process_start_command(message: Message):
         # "/daily_digest - показать сводки новостей за день\n"
         "/receive_news - показывать сводки новостей за час\n"
     )
+
+    # Закрепляем сообщение в шапке бота
+    await message.chat.pin_message(sent_message.message_id)
+
     user_id = message.from_user.id
     username = message.from_user.username if message.from_user.username else "unknown"
     login_timestamp = datetime.now().isoformat()
@@ -184,7 +188,10 @@ async def receive_news_handler(message: Message):
 # Хэндлер для всех остальных сообщений
 @router.message()
 async def process_other_messages(message: Message):
+    if message.text.startswith('/'):
+        return  # Если это команда, не обрабатываем дальше
+
     await message.answer(
         "Я понимаю только команды. Используйте /help, "
-        "чтобы увидеть список доступных команд."
+        "чтобы увидеть список доступных команд или нажмите на шапку бота."
     )
