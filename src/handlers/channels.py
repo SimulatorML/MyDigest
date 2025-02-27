@@ -83,6 +83,12 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 # Обработчик для получения списка каналов
 @router.message(UserStates.waiting_for_channels)
 async def process_channels_input(message: Message, state: FSMContext):
+    # Проверяем, является ли сообщение командой
+    if message.text.startswith('/'):
+        await state.clear()  # Сбрасываем состояние
+        await message.answer("Вы отменили добавление каналов. Пожалуйста, повторите нужную вам команду")
+        return  # Не обрабатываем дальше, так как это команда
+
     user_id = message.from_user.id
     channels_text = message.text.strip()
     addition_timestamp = datetime.now().isoformat()
@@ -150,6 +156,12 @@ async def process_delete_command(message: Message, state: FSMContext):
 
 @router.message(UserStates.waiting_for_delete)
 async def process_delete_channels(message: Message, state: FSMContext):
+    # Проверяем, является ли сообщение командой
+    if message.text.startswith('/'):
+        await state.clear()  # Сбрасываем состояние
+        await message.answer("Вы отменили удаление каналов. Пожалуйста, повторите нужную вам команду")
+        return  # Не обрабатываем дальше, так как это команда
+
     user_id = message.from_user.id
 
     channels_to_delete = {ch.strip() for ch in message.text.split() if ch.strip()}
@@ -160,7 +172,10 @@ async def process_delete_channels(message: Message, state: FSMContext):
         )
         return
 
-    await db.delete_user_channels(user_id, channels_to_delete)
+    result = await db.delete_user_channels(user_id, channels_to_delete)
+    if not result:
+        await message.answer("Произошла ошибка при удалении каналов.")
+        return
     await message.answer(f"Каналы удалены: {', '.join(channels_to_delete)}")
     await state.clear()
 
@@ -168,7 +183,10 @@ async def process_delete_channels(message: Message, state: FSMContext):
 @router.message(Command(commands="clear_channels"))
 async def process_clear_command(message: Message):
     user_id = message.from_user.id
-    await db.clear_user_channels(user_id)
+    result = await db.clear_user_channels(user_id)
+    if not result:
+        await message.answer("Произошла ошибка при очистке каналов.")
+        return
     await message.answer("Все каналы удалены.")
 
 @router.message(Command("receive_news"))
