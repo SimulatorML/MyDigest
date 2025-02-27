@@ -109,7 +109,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         # await message.answer("Вот Дайджест из ваших каналов:\n")
         # await print(fetch_user_digests(user_id))  # Вывод дайджеста
     else:
-        await message.answer("Произошла ошибка при добавлении каналов.")
+        await message.answer("Эти каналы уже есть в вашей подборке.")
     # Сбрасываем состояние
     await state.clear()
 
