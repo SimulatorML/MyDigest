@@ -111,7 +111,6 @@ class SupabaseDB:
                                     Defaults to the current time if not provided.
         :return: True if the operation was successful, otherwise handles exceptions.
         """
-
         try:
             existing_channels = await self.fetch_user_channels(user_id)
             existing_channel_names = {channel["channel_name"] for channel in existing_channels} if existing_channels else set()
@@ -127,12 +126,12 @@ class SupabaseDB:
                 if channel not in existing_channel_names
             ]
 
-            if data:
-                response = self.client.table("user_channels").upsert(data).execute()
-                return bool(response.data)
-            else:
+            if not data:  # Если нет новых каналов для добавления
                 print("Каналы уже существуют, ничего не добавлено.")
                 return False
+
+            self.client.table("user_channels").upsert(data).execute()
+            return True
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
