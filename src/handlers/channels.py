@@ -110,6 +110,10 @@ async def process_channels_input(message: Message, state: FSMContext):
         # await print(fetch_user_digests(user_id))  # Вывод дайджеста
     else:
         await message.answer("Эти каналы уже есть в вашей подборке.")
+        channels = await db.fetch_user_channels(user_id)
+        if channels is not None:
+            channel_names = [channel["channel_name"] for channel in channels]
+            await message.answer(f"Ваши каналы:\n{', '.join(channel_names)}")
     # Сбрасываем состояние
     await state.clear()
 
