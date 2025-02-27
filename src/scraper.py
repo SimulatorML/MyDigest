@@ -1,61 +1,95 @@
+import os.path
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from aiogram import Bot
 from telethon import TelegramClient, errors
+from telethon.sessions import StringSession
 from typing import List, Dict, Any
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
 
-
-def create_client(user_id):
-    session_name = f"user_{user_id}.session"
-    return TelegramClient(session_name, API_ID, API_HASH)
-
+def create_client():
+    session_path = os.path.join(os.getcwd(), 'sessions', "bot_session")
+    os.makedirs('sessions', exist_ok=True)
+    
+    client = TelegramClient(
+        session_path,
+        API_ID,
+        API_HASH,
+        system_version="4.16.30-vxCUSTOM",  # Добавляем информацию о системе
+        device_model="Desktop",  # Указываем тип устройства
+        app_version="1.0.0"  # Версия приложения
+    )
+    return client
 
 class TelegramScraper:
+    _instance = None
+    _client = None
     running_tasks = {}
+    is_initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self, user_id):
-        # Создаем клиента для конкретного пользователя
-        self.client = create_client(user_id)
+        self.user_id = user_id
         self.db = SupabaseDB(supabase)
-        # self.threshold_messages = 2
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        # self.running_tasks = {}
         self.summarizer = Summarization(api_key=MISTRAL_KEY)
 
-    async def connect_client(self):
-        """
-        Ensures that the Telethon client is connected.
-        If the client is not connected, it starts the client using the provided phone number.
-        """
+    async def ensure_client_initialized(self):
+        """Инициализация клиента при первой необходимости"""
+        if not self.is_initialized:
+            if self._client is None:
+                self._client = create_client()
+            await self.connect()
+            self.is_initialized = True
+        self.client = self._client
 
-        if not self.client.is_connected():
-            await self.client.start(phone=PHONE_NUMBER)
-            print("Telethon client connected")
+    async def connect(self):
+        """Подключение к Telegram если еще не подключены"""
+        try:
+            if not self._client.is_connected():
+                await self._client.connect()
+            
+            if not await self._client.is_user_authorized():
+                print("Начинаем процесс авторизации...")
+                await self._client.start(phone=PHONE_NUMBER)
+                await self._client.get_me()
+                print("Авторизация успешно завершена")
+            else:
+                print("Используем существующую сессию")
+                
+            print("Telethon client connected successfully")
+            return True
+        except Exception as e:
+            print(f"Ошибка при подключении к Telegram: {e}")
+            return False
+
+    @classmethod
+    async def initialize_client(cls):
+        """Инициализация клиента при запуске бота"""
+        if cls._instance is None:
+            cls._instance = cls(None)
+        success = await cls._instance.connect()
+        if not success:
+            raise Exception("Failed to initialize Telegram client")
 
     async def get_entity(self, entity_name):
-        """
-        Fetches a Telegram entity (such as a channel or user) by its name.
-        Args:
-            entity_name (str): The username or channel name of the Telegram entity.
-        Returns:
-            dict or None: A dictionary representing the entity object if retrieval
-            is successful, otherwise None if the entity is not found or an error occurs.
-        """
+        """Fetches a Telegram entity (such as a channel or user) by its name."""
         try:
             if not self.client.is_connected():
-                print("Telethon client disconnected. Reconnecting...")
-                await self.connect_client()
-
+                await self.connect()
+            
             entity = await self.client.get_entity(entity_name)
-            print(f"Accessing {entity_name}")
             return entity
         except Exception as e:
-            print(f"Failed to access {entity_name}: {e}")
+            logging.error(f"Error getting entity {entity_name}: {e}")
             return None
 
     async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[

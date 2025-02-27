@@ -170,15 +170,24 @@ async def receive_news_handler(message: Message):
 
     user_id = message.from_user.id
     scraper = TelegramScraper(user_id)
+    
+    try:
+        # Инициализируем клиент только при первом запросе
+        await scraper.ensure_client_initialized()
+        
+        if scraper.stop_auto_news_check(user_id):
+            await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
-    if scraper.stop_auto_news_check(user_id):
-        await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
+        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
+        TelegramScraper.running_tasks[user_id] = task
 
-    task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))   #1800 было
-    TelegramScraper.running_tasks[user_id] = task
-
-    # logger.info(f"Фоновая проверка новостей запущена для пользователя {user_id}.")
-    await message.answer(f"✅ Фоновая проверка новостей запущена. Вы будете получать обновления каждые {interval // divider} минут.")
+        await message.answer(
+            f"✅ Фоновая проверка новостей запущена. "
+            f"Вы будете получать обновления каждые {interval // divider} минут."
+        )
+    except Exception as e:
+        await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
+        logging.error(f"Error in receive_news_handler: {e}")
 
 
 # Хэндлер для всех остальных сообщений
