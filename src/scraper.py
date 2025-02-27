@@ -18,10 +18,7 @@ def create_client():
     client = TelegramClient(
         session_path,
         API_ID,
-        API_HASH,
-        system_version="4.16.30-vxCUSTOM",  # Добавляем информацию о системе
-        device_model="Desktop",  # Указываем тип устройства
-        app_version="1.0.0"  # Версия приложения
+        API_HASH
     )
     return client
 
