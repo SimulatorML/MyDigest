@@ -144,13 +144,22 @@ class SupabaseDB:
         :return: True if the operation was successful, otherwise handles exceptions.
         """
         try:
-            for channel in channels:
-                self.client.table("user_channels").delete().eq("user_id", user_id).eq(
-                    "channel_name", channel
-                ).execute()
+            # for channel in channels:
+            #     response = self.client.table("user_channels").delete().eq("user_id", user_id).eq(
+            #         "channel_name", channel
+            #     ).execute()
+
+            response = self.client.table("user_channels").delete().eq("user_id", user_id).in_(
+                "channel_name", channels
+            ).execute()
+            
+            if not response.data:
+                print(f"Ошибка при удалении каналов: {response.data}")
+                return False
             return True
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
 
     async def clear_user_channels(self, user_id: int) -> bool:
         """
@@ -160,10 +169,11 @@ class SupabaseDB:
         :return: The response data from the database operation.
         """
         try:
-            self.client.table("user_channels").delete().eq("user_id", user_id).execute()
-            return True
+            response = self.client.table("user_channels").delete().eq("user_id", user_id).execute()
+            return True if response.data else False
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
 
     async def save_channel_news(
         self, channel_id: int, news: str, addition_timestamp: str
