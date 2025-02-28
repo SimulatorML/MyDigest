@@ -23,7 +23,6 @@ def create_client():
     return client
 
 class TelegramScraper:
-    _instance = None
     _client = None
     running_tasks = {}
     is_initialized = False
