@@ -62,15 +62,6 @@ class TelegramScraper:
             print(f"Ошибка при подключении к Telegram: {e}")
             return False
 
-    @classmethod
-    async def initialize_client(cls):
-        """Инициализация клиента при запуске бота"""
-        if cls._instance is None:
-            cls._instance = cls(None)
-        success = await cls._instance.connect()
-        if not success:
-            raise Exception("Failed to initialize Telegram client")
-
     async def get_entity(self, entity_name):
         """Fetches a Telegram entity (such as a channel or user) by its name."""
         try:
