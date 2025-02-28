@@ -27,11 +27,6 @@ class TelegramScraper:
     running_tasks = {}
     is_initialized = False
 
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self, user_id):
         self.user_id = user_id
         self.db = SupabaseDB(supabase)
