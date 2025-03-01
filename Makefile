@@ -21,13 +21,14 @@ run:
 	$(VENV_BIN)/python -m src.bot
 
 clean:
-	ifeq ($(OS),Windows_NT)
+ifeq ($(OS),Windows_NT)
 	@echo "Removing environment (Windows)..."
 	rmdir /s /q $(VENV_NAME)
-	else
+else
 	@echo "Removing environment (macOS/Linux)..."
 	rm -rf $(VENV_NAME)
-	endif
+endif
+
 
 help:
 	@echo "Available commands:"

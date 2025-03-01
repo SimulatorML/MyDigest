@@ -22,7 +22,7 @@ class UserStates(StatesGroup):
 
 @router.message(CommandStart())
 async def process_start_command(message: Message):
-    await message.answer(
+    sent_message = await message.answer(
         "Привет! Я бот для создания дайджестов из Telegram каналов.\n"
         "Используйте следующие команды:\n"
         "/add_channels - добавить каналы\n"
@@ -33,6 +33,10 @@ async def process_start_command(message: Message):
         # "/daily_digest - показать сводки новостей за день\n"
         "/receive_news - показывать сводки новостей за час\n"
     )
+
+    # Закрепляем сообщение в шапке бота
+    await message.chat.pin_message(sent_message.message_id)
+
     user_id = message.from_user.id
     username = message.from_user.username if message.from_user.username else "unknown"
     login_timestamp = datetime.now().isoformat()
@@ -44,12 +48,6 @@ async def process_start_command(message: Message):
         await message.answer("Вы успешно зарегистрированы!")
     else:
         await message.answer("Вы уже зарегистрированы!")
-        # user_channels = await fetch_user_channels(user_id)
-        # if user_channels:
-        #     await make_digest(user_id)         # создание диджеста
-        #     await message.answer("Дайджест создан.")
-        #     await message.answer("Вот Дайджест из ваших каналов:\n")
-        #     await fetch_user_digests(user_id)  # Вывод дайджеста
 
 
 @router.message(Command(commands="help"))
@@ -79,6 +77,12 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 # Обработчик для получения списка каналов
 @router.message(UserStates.waiting_for_channels)
 async def process_channels_input(message: Message, state: FSMContext):
+    # Проверяем, является ли сообщение командой
+    if message.text.startswith('/'):
+        await state.clear()
+        await message.answer("Вы отменили добавление каналов. Пожалуйста, повторите нужную вам команду")
+        return
+
     user_id = message.from_user.id
     channels_text = message.text.strip()
     addition_timestamp = datetime.now().isoformat()
@@ -98,14 +102,9 @@ async def process_channels_input(message: Message, state: FSMContext):
     success = await db.add_user_channels(user_id, new_channels, addition_timestamp)
     if success:
         await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
-        # user_channels = await fetch_user_channels(user_id)
-        # if user_channels:
-        #     await make_digest(user_id)
-        # await message.answer("Дайджест создан.")
-        # await message.answer("Вот Дайджест из ваших каналов:\n")
-        # await print(fetch_user_digests(user_id))  # Вывод дайджеста
     else:
-        await message.answer("Произошла ошибка при добавлении каналов.")
+        await message.answer("Ошибка при добавлении каналов. Попробуйте еще раз.")
+
     # Сбрасываем состояние
     await state.clear()
 
@@ -142,6 +141,12 @@ async def process_delete_command(message: Message, state: FSMContext):
 
 @router.message(UserStates.waiting_for_delete)
 async def process_delete_channels(message: Message, state: FSMContext):
+    # Проверяем, является ли сообщение командой
+    if message.text.startswith('/'):
+        await state.clear()
+        await message.answer("Вы отменили удаление каналов. Пожалуйста, повторите нужную вам команду")
+        return
+
     user_id = message.from_user.id
 
     channels_to_delete = {ch.strip() for ch in message.text.split() if ch.strip()}
@@ -152,7 +157,10 @@ async def process_delete_channels(message: Message, state: FSMContext):
         )
         return
 
-    await db.delete_user_channels(user_id, channels_to_delete)
+    result = await db.delete_user_channels(user_id, channels_to_delete)
+    if not result:
+        await message.answer("Произошла ошибка при удалении каналов.")
+        return
     await message.answer(f"Каналы удалены: {', '.join(channels_to_delete)}")
     await state.clear()
 
@@ -160,8 +168,12 @@ async def process_delete_channels(message: Message, state: FSMContext):
 @router.message(Command(commands="clear_channels"))
 async def process_clear_command(message: Message):
     user_id = message.from_user.id
-    await db.clear_user_channels(user_id)
+    result = await db.clear_user_channels(user_id)
+    if not result:
+        await message.answer("Произошла ошибка при очистке каналов.")
+        return
     await message.answer("Все каналы удалены.")
+
 
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
@@ -193,7 +205,10 @@ async def receive_news_handler(message: Message):
 # Хэндлер для всех остальных сообщений
 @router.message()
 async def process_other_messages(message: Message):
+    if message.text.startswith('/'):
+        return  # Если это команда, не обрабатываем дальше
+
     await message.answer(
         "Я понимаю только команды. Используйте /help, "
-        "чтобы увидеть список доступных команд."
+        "чтобы увидеть список доступных команд или нажмите на шапку бота."
     )

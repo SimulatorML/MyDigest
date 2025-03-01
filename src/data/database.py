@@ -90,8 +90,34 @@ class SupabaseDB:
                 self.client.table("user_channels")
                 .select("*")
                 .eq("user_id", user_id)
+                .eq("is_active", True)  # Берем только активные каналы
                 .execute()
             )
+            # return response.data if response.data else None
+            data = response.data if response.data else []
+            unique_channels = {channel["channel_name"]: channel for channel in data}
+            return list(unique_channels.values())
+        except Exception as e:
+            SupabaseErrorHandler.handle_error(e, user_id, None)
+
+    async def fetch_all_user_channels(self, user_id: int) -> List[Dict[str, Any]]:
+        """
+        Retrieve all channels associated with a given user from the database, including inactive ones.
+
+        :param user_id: The ID of the user whose channels are to be retrieved.
+        :return: A list of dictionaries containing all the user's channels.
+                 Each dictionary contains the keys "channel_id", "user_id", 
+                 "channel_name", "channel_link", "addition_timestamp", "is_active".
+        :raises: SupabaseErrorHandler if an error occurs.
+        """
+        try:
+            response = (
+                self.client.table("user_channels")
+                .select("*")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            # return response.data if response.data else None
             data = response.data if response.data else []
             unique_channels = {channel["channel_name"]: channel for channel in data}
             return list(unique_channels.values())
@@ -102,38 +128,50 @@ class SupabaseDB:
         self, user_id: int, channels: List[str], addition_timestamp: str = None
     ) -> bool:
         """
-        Add specified channels to a given user in the database.
+        Add new channels to a user's list and update existing ones.
 
-        :param user_id: The ID of the user whose channels are to be added.
-        :param channels: A set of channel names to add.
-        :param addition_timestamp: The timestamp of the user's action.
-                                    Defaults to the current time if not provided.
-        :return: True if the operation was successful, otherwise handles exceptions.
+        :param user_id: The ID of the user whose channels are to be added or updated.
+        :param channels: A list of channel names to add or update.
+        :param addition_timestamp: The timestamp of the addition operation.
+                                   Defaults to the current time if not provided.
+        :return: True if any channels were added or updated, otherwise False.
+        :raises: SupabaseErrorHandler if an error occurs.
         """
-
         try:
-            existing_channels = await self.fetch_user_channels(user_id)
-            existing_channel_names = {channel["channel_name"] for channel in existing_channels} if existing_channels else set()
+            # Получаем список всех каналов, включая неактивные
+            existing_channels = await self.fetch_all_user_channels(user_id)
+            existing_names = {ch["channel_name"] for ch in existing_channels} if existing_channels else set()
+            
+            # Разделяем каналы на существующие и новые
+            existing_to_update = [ch for ch in channels if ch in existing_names]
+            new_to_add = [ch for ch in channels if ch not in existing_names]
 
-            data = [
-                {
+            # Обновляем существующие каналы
+            if existing_to_update:
+                self.client.table("user_channels").update({
+                    "is_active": True,
+                    "addition_timestamp": addition_timestamp
+                }).eq("user_id", user_id).in_("channel_name", existing_to_update).execute()
+
+            # Добавляем новые каналы
+            if new_to_add:
+                new_data = [{
                     "user_id": user_id,
-                    "channel_name": channel if channel.startswith("@") else None,
+                    "channel_name": channel,
                     "channel_link": f"https://t.me/{channel[1:]}",
                     "addition_timestamp": addition_timestamp,
-                }
-                for channel in channels
-                if channel not in existing_channel_names
-            ]
+                    "is_active": True
+                } for channel in new_to_add
+                ]
+                
+                if new_data:
+                    self.client.table("user_channels").upsert(new_data).execute()
 
-            if data:
-                response = self.client.table("user_channels").upsert(data).execute()
-                return bool(response.data)
-            else:
-                print("Каналы уже существуют, ничего не добавлено.")
-                return False
+            return bool(existing_to_update or new_to_add)
+
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
 
     async def delete_user_channels(self, user_id: int, channels: List[str]) -> bool:
         """
@@ -144,13 +182,14 @@ class SupabaseDB:
         :return: True if the operation was successful, otherwise handles exceptions.
         """
         try:
-            for channel in channels:
-                self.client.table("user_channels").delete().eq("user_id", user_id).eq(
-                    "channel_name", channel
-                ).execute()
-            return True
+            response = self.client.table("user_channels").update(
+                {"is_active": False}
+            ).eq("user_id", user_id).in_("channel_name", channels).execute()
+
+            return bool(response.data)
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
 
     async def clear_user_channels(self, user_id: int) -> bool:
         """
@@ -160,10 +199,14 @@ class SupabaseDB:
         :return: The response data from the database operation.
         """
         try:
-            self.client.table("user_channels").delete().eq("user_id", user_id).execute()
-            return True
+            response = self.client.table("user_channels").update(
+                {"is_active": False}
+            ).eq("user_id", user_id).execute()
+
+            return bool(response.data)
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
 
     async def save_channel_news(
         self, channel_id: int, news: str, addition_timestamp: str
