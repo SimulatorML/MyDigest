@@ -1,4 +1,5 @@
 from mistralai import Mistral
+from typing import List, Dict, Union
 
 class Summarization:
     def __init__(self, api_key: str, model: str = "mistral-large-latest"):
