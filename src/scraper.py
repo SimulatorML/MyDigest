@@ -31,6 +31,7 @@ class TelegramScraper:
         self.db = SupabaseDB(supabase)
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.summarizer = Summarization(api_key=MISTRAL_KEY)
+        self.client = None
 
     async def ensure_client_initialized(self):
         """Инициализация клиента при первой необходимости"""
