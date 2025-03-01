@@ -175,7 +175,8 @@ class TelegramScraper:
         while user_id in TelegramScraper.running_tasks:
             logging.info(f"🔄 Проверка новых сообщений для {user_id}...")
             await self.check_new_messages(user_id, time_range="1h")  # Проверяем новые сообщения за последний час
-            print(f"✅ Проверка завершена {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Следующая через {interval // 60} минут.")
+            logging.info(f"✅ Проверка завершена {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. "
+                         f"Следующая через {interval // 60} минут.")
             await asyncio.sleep(interval)  # Ждем перед следующей проверкой
 
     def stop_auto_news_check(self, user_id: int):
