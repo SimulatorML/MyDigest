@@ -43,4 +43,8 @@ class Summarization:
             return response.choices[0].message.content
         except Exception as e:
             print(f"Ошибка генерации дайджеста: {e}")
-            return None
+            return "Failed to generate the summary."
+
+    def cluster_summaries(self, summaries_text: str) -> str:
+        """
+        Clusters summarized news items based on similar topics.
