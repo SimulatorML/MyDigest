@@ -48,3 +48,30 @@ class Summarization:
     def cluster_summaries(self, summaries_text: str) -> str:
         """
         Clusters summarized news items based on similar topics.
+
+        :param summaries_text: A string containing summaries and their respective links.
+        :returns: A formatted string where similar topics are grouped together.
+        """
+        if not summaries_text or not summaries_text.strip():
+            return "No items available for clustering."
+
+        prompt = (
+            f'''Please gather the following news summaries into topic-based clusters: \n{summaries_text}. 
+            Group similar topics together and structure the output in the same format as the original summary,  
+            with each summary followed by its relevant link(s).  
+            Topics should be written in bold. Use HTML tags (<b> and </b>). Add additional \n after the topic. Use this format: <b> Topic </b> \n"
+            No need to add any bullet numbers, bullets etc. 
+            Topics must not be preceded by any symbols. 
+            Topics must be in Russian language.
+            Make very broad topics, try to limit number of topics to max of 5-6'''
+        )
+
+        try:
+            response = self.client.chat.complete(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error during clustering: {e}")
+            return "Failed to produce the final digest."
