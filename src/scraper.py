@@ -142,8 +142,10 @@ class TelegramScraper:
                 ]
 
                 for msg in recent_messages:
-                    await self.db.save_channel_news(channel["channel_id"], msg["message"],
-                                                    msg["message_date"].isoformat())
+                    await self.db.save_channel_news(channel["channel_id"],
+                                                    msg["message"],
+                                                    msg["message_date"].isoformat()
+                                                    )
 
                     aggregated_news.append({
                         "channel": channel["channel_name"].lstrip("@"),
