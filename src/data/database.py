@@ -90,7 +90,7 @@ class SupabaseDB:
                 self.client.table("user_channels")
                 .select("*")
                 .eq("user_id", user_id)
-                .eq("is_active", True)  # Фильтруем только активные каналы
+                .eq("is_active", True)  # Берем только активные каналы
                 .execute()
             )
             return response.data if response.data else None
