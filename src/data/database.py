@@ -90,6 +90,7 @@ class SupabaseDB:
                 self.client.table("user_channels")
                 .select("*")
                 .eq("user_id", user_id)
+                .eq("is_active", True)  # Фильтруем только активные каналы
                 .execute()
             )
             return response.data if response.data else None
@@ -144,19 +145,11 @@ class SupabaseDB:
         :return: True if the operation was successful, otherwise handles exceptions.
         """
         try:
-            # for channel in channels:
-            #     response = self.client.table("user_channels").delete().eq("user_id", user_id).eq(
-            #         "channel_name", channel
-            #     ).execute()
+            response = self.client.table("user_channels").update(
+                {"is_active": False}
+            ).eq("user_id", user_id).in_("channel_name", channels).execute()
 
-            response = self.client.table("user_channels").delete().eq("user_id", user_id).in_(
-                "channel_name", channels
-            ).execute()
-            
-            if not response.data:
-                print(f"Ошибка при удалении каналов: {response.data}")
-                return False
-            return True
+            return bool(response.data)
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
@@ -169,8 +162,11 @@ class SupabaseDB:
         :return: The response data from the database operation.
         """
         try:
-            response = self.client.table("user_channels").delete().eq("user_id", user_id).execute()
-            return True if response.data else False
+            response = self.client.table("user_channels").update(
+                {"is_active": False}
+            ).eq("user_id", user_id).execute()
+
+            return bool(response.data)
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
