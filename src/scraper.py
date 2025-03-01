@@ -155,7 +155,8 @@ class TelegramScraper:
                 await asyncio.sleep(3)
 
             if aggregated_news:
-                digest = self.summarizer.summarize(aggregated_news)
+                summaries = self.summarizer.summarize_news_items(aggregated_news)
+                digest = self.summarizer.cluster_summaries(summaries)
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
                 await self.bot.send_message(user_id, f"📢 Ваш дайджест:\n\n{digest}")
