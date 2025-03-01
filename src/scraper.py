@@ -159,7 +159,7 @@ class TelegramScraper:
                 digest = self.summarizer.cluster_summaries(summaries)
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
-                await self.bot.send_message(user_id, f"📢 Ваш дайджест:\n\n{digest}")
+                await self.bot.send_message(user_id, f"📢 <b> Ваш дайджест за последний час: </b>\n\n{digest}", parse_mode="HTML")
 
         except Exception as e:
             logging.error(f"Ошибка в check_new_messages: {e}")
