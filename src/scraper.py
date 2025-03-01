@@ -74,8 +74,7 @@ class TelegramScraper:
             logging.error(f"Error getting entity {entity_name}: {e}")
             return None
 
-    async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[
-        Dict[str, Any]]:
+    async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[Dict[str, Union[int, str, datetime]]]:
         """
         Scrapes messages from a given Telegram channel within a specified time range.
         Args:
