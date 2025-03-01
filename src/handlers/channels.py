@@ -48,12 +48,6 @@ async def process_start_command(message: Message):
         await message.answer("Вы успешно зарегистрированы!")
     else:
         await message.answer("Вы уже зарегистрированы!")
-        # user_channels = await fetch_user_channels(user_id)
-        # if user_channels:
-        #     await make_digest(user_id)         # создание диджеста
-        #     await message.answer("Дайджест создан.")
-        #     await message.answer("Вот Дайджест из ваших каналов:\n")
-        #     await fetch_user_digests(user_id)  # Вывод дайджеста
 
 
 @router.message(Command(commands="help"))
@@ -85,9 +79,9 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 async def process_channels_input(message: Message, state: FSMContext):
     # Проверяем, является ли сообщение командой
     if message.text.startswith('/'):
-        await state.clear()  # Сбрасываем состояние
+        await state.clear()
         await message.answer("Вы отменили добавление каналов. Пожалуйста, повторите нужную вам команду")
-        return  # Не обрабатываем дальше, так как это команда
+        return
 
     user_id = message.from_user.id
     channels_text = message.text.strip()
@@ -108,12 +102,6 @@ async def process_channels_input(message: Message, state: FSMContext):
     success = await db.add_user_channels(user_id, new_channels, addition_timestamp)
     if success:
         await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
-        # user_channels = await fetch_user_channels(user_id)
-        # if user_channels:
-        #     await make_digest(user_id)
-        # await message.answer("Дайджест создан.")
-        # await message.answer("Вот Дайджест из ваших каналов:\n")
-        # await print(fetch_user_digests(user_id))  # Вывод дайджеста
     else:
         await message.answer("Ошибка при добавлении каналов. Попробуйте еще раз.")
 
@@ -155,9 +143,9 @@ async def process_delete_command(message: Message, state: FSMContext):
 async def process_delete_channels(message: Message, state: FSMContext):
     # Проверяем, является ли сообщение командой
     if message.text.startswith('/'):
-        await state.clear()  # Сбрасываем состояние
+        await state.clear()
         await message.answer("Вы отменили удаление каналов. Пожалуйста, повторите нужную вам команду")
-        return  # Не обрабатываем дальше, так как это команда
+        return
 
     user_id = message.from_user.id
 
