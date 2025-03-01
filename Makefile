@@ -29,6 +29,7 @@ else
 	rm -rf $(VENV_NAME)
 endif
 
+
 help:
 	@echo "Available commands:"
 	@echo "  make setup     : Setup project (create environment and install requirements)"

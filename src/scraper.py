@@ -1,65 +1,80 @@
+import os.path
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from aiogram import Bot
 from telethon import TelegramClient, errors
-from typing import List, Dict, Any
+from typing import List, Dict, Union
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
 
-
-def create_client(user_id):
-    session_name = f"user_{user_id}.session"
-    return TelegramClient(session_name, API_ID, API_HASH)
-
+def create_client():
+    session_path = os.path.join(os.getcwd(), 'sessions', "bot_session")
+    os.makedirs('sessions', exist_ok=True)
+    
+    client = TelegramClient(
+        session_path,
+        API_ID,
+        API_HASH
+    )
+    return client
 
 class TelegramScraper:
+    _client = None
     running_tasks = {}
+    is_initialized = False
 
     def __init__(self, user_id):
-        # Создаем клиента для конкретного пользователя
-        self.client = create_client(user_id)
+        self.user_id = user_id
         self.db = SupabaseDB(supabase)
-        # self.threshold_messages = 2
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        # self.running_tasks = {}
         self.summarizer = Summarization(api_key=MISTRAL_KEY)
+        self.client = None
 
-    async def connect_client(self):
-        """
-        Ensures that the Telethon client is connected.
-        If the client is not connected, it starts the client using the provided phone number.
-        """
+    async def ensure_client_initialized(self):
+        """Инициализация клиента при первой необходимости"""
+        if not self.is_initialized:
+            if self._client is None:
+                self._client = create_client()
+            await self.connect()
+            self.is_initialized = True
+        self.client = self._client
 
-        if not self.client.is_connected():
-            await self.client.start(phone=PHONE_NUMBER)
-            print("Telethon client connected")
+    async def connect(self):
+        """Подключение к Telegram если еще не подключены"""
+        try:
+            if not self._client.is_connected():
+                await self._client.connect()
+            
+            if not await self._client.is_user_authorized():
+                print("Начинаем процесс авторизации...")
+                await self._client.start(phone=PHONE_NUMBER)
+                await self._client.get_me()
+                print("Авторизация успешно завершена")
+            else:
+                print("Используем существующую сессию")
+                
+            print("Telethon client connected successfully")
+            return True
+        except Exception as e:
+            print(f"Ошибка при подключении к Telegram: {e}")
+            return False
 
     async def get_entity(self, entity_name):
-        """
-        Fetches a Telegram entity (such as a channel or user) by its name.
-        Args:
-            entity_name (str): The username or channel name of the Telegram entity.
-        Returns:
-            dict or None: A dictionary representing the entity object if retrieval
-            is successful, otherwise None if the entity is not found or an error occurs.
-        """
+        """Fetches a Telegram entity (such as a channel or user) by its name."""
         try:
             if not self.client.is_connected():
-                print("Telethon client disconnected. Reconnecting...")
-                await self.connect_client()
-
+                await self.connect()
+            
             entity = await self.client.get_entity(entity_name)
-            print(f"Accessing {entity_name}")
             return entity
         except Exception as e:
-            print(f"Failed to access {entity_name}: {e}")
+            logging.error(f"Error getting entity {entity_name}: {e}")
             return None
 
-    async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[
-        Dict[str, Any]]:
+    async def scrape_messages(self, entity_name: str, limit: int = 400, time_range: str = "24h") -> List[Dict[str, Union[int, str, datetime]]]:
         """
         Scrapes messages from a given Telegram channel within a specified time range.
         Args:
@@ -83,24 +98,25 @@ class TelegramScraper:
         start_time = now - timedelta(hours=24) if time_range == "24h" else now - timedelta(days=7)
 
         messages = []
-        try:
-            async for message in self.client.iter_messages(entity, limit=limit):
-                message_date_naive = message.date.replace(tzinfo=None)
-                if message_date_naive >= start_time:
-                    messages.append({
-                        "message_id": message.id,
-                        "message": message.text,
-                        "message_date": message.date
-                    })
-                else:
-                    break
-        except errors.FloodWaitError as e:
-            print(f'Have to sleep {e.seconds} seconds')
-            await asyncio.sleep(e.seconds)
-            return await self.scrape_messages(entity_name, limit, time_range)
-        except Exception as e:
-            print(f"Failed to scrape messages: {e}")
-
+        while True:
+            try:
+                async for message in self.client.iter_messages(entity, limit=limit):
+                    message_date_naive = message.date.replace(tzinfo=None)
+                    if message_date_naive >= start_time:
+                        messages.append({
+                            "message_id": message.id,
+                            "message": message.text,
+                            "message_date": message.date
+                        })
+                    else:
+                        break
+                break
+            except errors.FloodWaitError as e:
+                logging.warning(f"FloodWait на {e.seconds} секунд...")
+                await asyncio.sleep(e.seconds)
+            except Exception as e:
+                logging.error(f"Failed to scrape messages: {e}")
+                break
         return messages
 
     async def check_new_messages(self, user_id: int, time_range: str = "1h"):
@@ -121,12 +137,15 @@ class TelegramScraper:
                     continue
 
                 recent_messages = [
-                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= start_time
+                    msg for msg in messages
+                    if msg["message_date"].replace(tzinfo=None) >= start_time
                 ]
 
                 for msg in recent_messages:
-                    await self.db.save_channel_news(channel["channel_id"], msg["message"],
-                                                    msg["message_date"].isoformat())
+                    await self.db.save_channel_news(channel["channel_id"],
+                                                    msg["message"],
+                                                    msg["message_date"].isoformat()
+                                                    )
 
                     aggregated_news.append({
                         "channel": channel["channel_name"].lstrip("@"),
@@ -136,10 +155,11 @@ class TelegramScraper:
                 await asyncio.sleep(3)
 
             if aggregated_news:
-                digest = self.summarizer.summarize(aggregated_news)
+                summaries = self.summarizer.summarize_news_items(aggregated_news)
+                digest = self.summarizer.cluster_summaries(summaries)
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
-                await self.bot.send_message(user_id, f"📢 Ваш дайджест:\n\n{digest}")
+                await self.bot.send_message(user_id, f"📢 <b> Ваш дайджест за последний час: </b>\n\n{digest}", parse_mode="HTML")
 
         except Exception as e:
             logging.error(f"Ошибка в check_new_messages: {e}")
@@ -147,15 +167,17 @@ class TelegramScraper:
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
         """Фоновая проверка сообщений для конкретного пользователя каждые N секунд."""
-        print(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
+        logging.info(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
 
         # очистка старых новостей из таблицы channels_news при запуске проверки
         await self.db.cleanup_old_news()
 
         while user_id in TelegramScraper.running_tasks:
-            print(f"\n🔄 Проверка новых сообщений для {user_id}...\n")
+            logging.info(f"\n🔄 Проверка новых сообщений для {user_id}...\n")
             await self.check_new_messages(user_id, time_range="1h")  # Проверяем новые сообщения за последний час
-            print(f"\n✅ Проверка завершена {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Следующая через {interval // 60} минут.\n")
+            logging.info(f"\n✅ Проверка завершена {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. "
+                         f"Следующая через {interval // 60} минут.\n")
+
             await asyncio.sleep(interval)  # Ждем перед следующей проверкой
 
     def stop_auto_news_check(self, user_id: int):
