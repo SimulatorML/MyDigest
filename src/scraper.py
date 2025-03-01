@@ -4,8 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from aiogram import Bot
 from telethon import TelegramClient, errors
-from telethon.sessions import StringSession
-from typing import List, Dict, Any
+from typing import List, Dict, Union
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
