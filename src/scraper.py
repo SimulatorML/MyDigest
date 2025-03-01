@@ -137,7 +137,8 @@ class TelegramScraper:
                     continue
 
                 recent_messages = [
-                    msg for msg in messages if msg["message_date"].replace(tzinfo=None) >= start_time
+                    msg for msg in messages
+                    if msg["message_date"].replace(tzinfo=None) >= start_time
                 ]
 
                 for msg in recent_messages:
