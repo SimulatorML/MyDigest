@@ -115,11 +115,8 @@ async def process_channels_input(message: Message, state: FSMContext):
         # await message.answer("Вот Дайджест из ваших каналов:\n")
         # await print(fetch_user_digests(user_id))  # Вывод дайджеста
     else:
-        await message.answer(f"Эти каналы: {', '.join(new_channels)} уже есть в вашей подборке.")
-        channels = await db.fetch_user_channels(user_id)
-        if channels is not None:
-            channel_names = [channel["channel_name"] for channel in channels]
-            await message.answer(f"Ваши каналы:\n{', '.join(channel_names)}")
+        await message.answer("Ошибка при добавлении каналов. Попробуйте еще раз.")
+
     # Сбрасываем состояние
     await state.clear()
 
@@ -188,6 +185,7 @@ async def process_clear_command(message: Message):
         await message.answer("Произошла ошибка при очистке каналов.")
         return
     await message.answer("Все каналы удалены.")
+
 
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
