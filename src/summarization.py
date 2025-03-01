@@ -18,6 +18,9 @@ class Summarization:
             }
         :returns: A formatted summary string with links to the original news items.
         """
+        if not news:
+            return "No news items provided."
+
         prompt = (
             "Please create a summary of the news provided. "
             "Each news item is represented as a dictionary with keys 'channel', 'message', and 'message_id'. "
