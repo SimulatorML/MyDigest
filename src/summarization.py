@@ -8,12 +8,15 @@ class Summarization:
 
     def summarize_news_items(self, news: List[Dict[str, Union[str, int]]]) -> str:
         """
-        news: list of dictionaries with keys:
-              - 'channel': channel name (without the '@')
-              - 'message': text of the news
-              - 'message_id': unique id of the message
-        Example item:
-              {'channel': 'exampleChannel', 'message': 'Some news text', 'message_id': '12345'}
+        Generates a summarized version of provided news items, clustering similar ones together.
+
+        :param news: A list of dictionaries with keys:
+            {
+              'channel': channel name (without the '@')
+              'message': text of the news
+              'message_id': unique id of the message
+            }
+        :returns: A formatted summary string with links to the original news items.
         """
         prompt = (
             "Please create a summary of the news provided. "
