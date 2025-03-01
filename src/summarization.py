@@ -2,7 +2,7 @@ from mistralai import Mistral
 from typing import List, Dict, Union
 
 class Summarization:
-    def __init__(self, api_key: str, model: str = "mistral-large-latest"):
+    def __init__(self, api_key: str, model: str = "mistral-large-latest") -> None:
         self.client = Mistral(api_key=api_key)
         self.model = model
 
