@@ -98,24 +98,25 @@ class TelegramScraper:
         start_time = now - timedelta(hours=24) if time_range == "24h" else now - timedelta(days=7)
 
         messages = []
-        try:
-            async for message in self.client.iter_messages(entity, limit=limit):
-                message_date_naive = message.date.replace(tzinfo=None)
-                if message_date_naive >= start_time:
-                    messages.append({
-                        "message_id": message.id,
-                        "message": message.text,
-                        "message_date": message.date
-                    })
-                else:
-                    break
-        except errors.FloodWaitError as e:
-            print(f'Have to sleep {e.seconds} seconds')
-            await asyncio.sleep(e.seconds)
-            return await self.scrape_messages(entity_name, limit, time_range)
-        except Exception as e:
-            print(f"Failed to scrape messages: {e}")
-
+        while True:
+            try:
+                async for message in self.client.iter_messages(entity, limit=limit):
+                    message_date_naive = message.date.replace(tzinfo=None)
+                    if message_date_naive >= start_time:
+                        messages.append({
+                            "message_id": message.id,
+                            "message": message.text,
+                            "message_date": message.date
+                        })
+                    else:
+                        break
+                break
+            except errors.FloodWaitError as e:
+                logging.warning(f"FloodWait на {e.seconds} секунд...")
+                await asyncio.sleep(e.seconds)
+            except Exception as e:
+                logging.error(f"Failed to scrape messages: {e}")
+                break
         return messages
 
     async def check_new_messages(self, user_id: int, time_range: str = "1h"):
