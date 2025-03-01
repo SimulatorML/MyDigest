@@ -6,7 +6,7 @@ class Summarization:
         self.client = Mistral(api_key=api_key)
         self.model = model
 
-    def summarize(self, news: list) -> str:
+    def summarize_news_items(self, news: List[Dict[str, Union[str, int]]]) -> str:
         """
         news: list of dictionaries with keys:
               - 'channel': channel name (without the '@')
