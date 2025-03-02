@@ -10,6 +10,9 @@ from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
 
+TIME_RANGE_24H = timedelta(hours=24)
+DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1) # Значение по умолчанию для check_new_messages
+
 def create_client():
     session_path = os.path.join(os.getcwd(), 'sessions', "bot_session")
     os.makedirs('sessions', exist_ok=True)
