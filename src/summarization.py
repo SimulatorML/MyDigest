@@ -23,7 +23,7 @@ class Summarization:
 
         prompt = (
             f'''You are provided with a list of news items.
-            Each news item is represented as a dictionary with keys 'channel', 'message', and 'message_id'. 
+            Each news item is represented as a dictionary with keys 'channel', 'message', 'message_id' and 'channel_title' 
             Here is the list: {news}. 
             If some news items are similar in context, cluster them together and produce one summary for the cluster. 
             Create a list where each line contains a summary in Russian (no longer than 150 characters) and, on the next line, 
