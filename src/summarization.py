@@ -62,7 +62,7 @@ class Summarization:
             Topics should be written in bold. Use HTML tags (<b> and </b>). Add additional \n after the topic. 
             Use this format: <b> Topic </b> \n
             No need to add any bullet numbers, bullets etc. 
-            Topics must not be preceded by any symbols. 
+            Each topic must be preceded with one emoji related to the topic.
             Topics must be in Russian language.
             Make very broad topics, try to limit number of topics to max of 5-6'''
         )
