@@ -211,7 +211,17 @@ class TelegramScraper:
             await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
-        """Фоновая проверка сообщений для конкретного пользователя каждые N секунд."""
+        """
+        Start a background task to periodically check for new messages and update the user's digest.
+
+        This method initiates a continuous background loop that, at every interval, checks for new messages
+        across the user's subscribed channels, updates the digest, and cleans up old news from the database.
+
+        :param user_id: The unique identifier of the user.
+        :param interval: The time interval in seconds between successive checks. Defaults to 1800 seconds (30 minutes).
+        :return: None.
+        :raises: Exception if the background task fails to start.
+        """
         logging.info(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
 
         # очистка старых новостей из таблицы channels_news при запуске проверки
