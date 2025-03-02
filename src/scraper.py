@@ -124,7 +124,9 @@ class TelegramScraper:
             return []
 
         now = datetime.utcnow()
-        start_time = now - timedelta(hours=24) if time_range == "24h" else now - timedelta(days=7)
+        start_time = now - TIME_RANGE_24H
+
+        channel_title = entity.title
 
         messages = []
         while True:
