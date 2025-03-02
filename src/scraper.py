@@ -170,7 +170,7 @@ class TelegramScraper:
                 return
 
             now = datetime.utcnow()
-            start_time = now - timedelta(hours=1) if time_range == "1h" else now - timedelta(minutes=30)
+            start_time = now - time_range
             aggregated_news = []
 
             for channel in user_channels:
