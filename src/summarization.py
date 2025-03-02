@@ -59,7 +59,8 @@ class Summarization:
             f'''Please gather the following news summaries into topic-based clusters: \n{summaries_text}. 
             Group similar topics together and structure the output in the same format as the original summary,  
             with each summary followed by its relevant link(s).  
-            Topics should be written in bold. Use HTML tags (<b> and </b>). Add additional \n after the topic. Use this format: <b> Topic </b> \n"
+            Topics should be written in bold. Use HTML tags (<b> and </b>). Add additional \n after the topic. 
+            Use this format: <b> Topic </b> \n
             No need to add any bullet numbers, bullets etc. 
             Topics must not be preceded by any symbols. 
             Topics must be in Russian language.
