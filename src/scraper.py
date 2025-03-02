@@ -137,7 +137,8 @@ class TelegramScraper:
                         messages.append({
                             "message_id": message.id,
                             "message": message.text,
-                            "message_date": message.date
+                            "message_date": message.date,
+                            "channel_title": channel_title
                         })
                     else:
                         break
