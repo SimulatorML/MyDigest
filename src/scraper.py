@@ -37,7 +37,15 @@ class TelegramScraper:
         self.client = None
 
     async def ensure_client_initialized(self):
-        """Инициализация клиента при первой необходимости"""
+        """
+        Initialize the Telegram client if it is not already initialized.
+
+        The method checks whether the client is already initialized. If not, it creates the client,
+        connects to the Telegram network, and marks the initialization as complete.
+
+        :return: None.
+        :raises: Exception if client initialization or connection fails.
+        """
         if not self.is_initialized:
             if self._client is None:
                 self._client = create_client()
