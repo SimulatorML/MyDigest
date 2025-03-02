@@ -192,7 +192,8 @@ class TelegramScraper:
                     aggregated_news.append({
                         "channel": channel["channel_name"].lstrip("@"),
                         "message": msg["message"],
-                        "message_id": msg["message_id"]
+                        "message_id": msg["message_id"],
+                        "channel_title": msg.get("channel_title", channel["channel_name"].lstrip("@"))
                     })
                 await asyncio.sleep(3)
 
