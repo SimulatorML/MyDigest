@@ -104,19 +104,20 @@ class TelegramScraper:
 
     async def scrape_messages(self, entity_name: str, limit: int = 1000) -> List[Dict[str, Union[int, str, datetime]]]:
         """
-        Scrapes messages from a given Telegram channel within a specified time range.
-        Args:
-            entity_name (str): The username or channel name of the Telegram entity.
-            limit (int, optional): The maximum number of messages to scrape. Defaults to 400.
-            time_range (str, optional): The time range for filtering messages.
-                                        Accepts "24h" for the last 24 hours or "7d" for the last 7 days.
-                                        Defaults to "24h".
-        Returns:
-            List[Dict[str, Any]]: A list of dictionaries where each dictionary contains:
-                - 'message_id' (int): The unique ID of the message.
-                - 'message' (str): The text content of the message.
-                - 'message_date' (datetime): The timestamp of when the message was sent.
-            Returns an empty list if no messages are found or an error occurs.
+        Scrape messages from a specified Telegram channel within the past 24 hours.
+
+        The method retrieves the specified Telegram entity and iterates through its messages.
+        Only messages sent within the last 24 hours are collected. In case of a FloodWaitError,
+        it will wait for the specified duration before retrying.
+
+        :param entity_name: The username or channel name of the Telegram entity.
+        :param limit: The maximum number of messages to scrape. Defaults to 1000.
+        :return: A list of dictionaries, each containing:
+                 - 'message_id': The unique ID of the message.
+                 - 'message': The text content of the message.
+                 - 'message_date': The timestamp of when the message was sent.
+                 - 'channel_title': The title of the channel.
+        :raises: Exception if message scraping fails.
         """
         entity = await self.get_entity(entity_name)
         if not entity:
