@@ -151,8 +151,18 @@ class TelegramScraper:
                 break
         return messages
 
-    async def check_new_messages(self, user_id: int, time_range: str = "1h"):
-        """Проверяет новые сообщения и отправляет дайджест пользователю."""
+    async def check_new_messages(self, user_id: int, time_range: DEFAULT_TIME_RANGE_HOURS):
+        """
+        Check for new messages from channels associated with the user and send a digest.
+
+        This method retrieves the user's channels from the database, scrapes recent messages from each channel
+        within the specified time range, saves them to the database, and then creates and sends a digest to the user.
+
+        :param user_id: The unique identifier of the user.
+        :param time_range: The time range (as timedelta) to consider for new messages.
+        :return: None.
+        :raises: Exception if checking messages or sending the digest fails.
+        """
         try:
             user_channels = await self.db.fetch_user_channels(user_id)
             if not user_channels:
