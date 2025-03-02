@@ -64,7 +64,7 @@ class Summarization:
             No need to add any bullet numbers, bullets etc. 
             Each topic must be preceded with one emoji related to the topic.
             Topics must be in Russian language.
-            Make very broad topics, try to limit number of topics to max of 5-6'''
+            Make very broad topics, try to limit number of topics to max of 5'''
         )
 
         try:
