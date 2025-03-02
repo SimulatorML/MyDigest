@@ -54,7 +54,15 @@ class TelegramScraper:
         self.client = self._client
 
     async def connect(self):
-        """Подключение к Telegram если еще не подключены"""
+        """
+        Connect to the Telegram network using the Telethon client.
+
+        This method checks if the client is connected; if not, it connects and handles the user authorization.
+        If the user is not authorized, it starts the authorization process.
+
+        :return: True if the client is connected successfully, otherwise False.
+        :raises: Exception if connection or authorization fails.
+        """
         try:
             if not self._client.is_connected():
                 await self._client.connect()
