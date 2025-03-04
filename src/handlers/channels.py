@@ -187,7 +187,7 @@ async def receive_news_handler(message: Message):
     
     try:
         # Инициализируем клиент только при первом запросе
-        await scraper.ensure_client_initialized()
+        await init_telethon_client()
         
         if scraper.stop_auto_news_check(user_id):
             await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
