@@ -46,7 +46,6 @@ async def init_telethon_client() -> TelegramClient:
                 print("Используем существующую сессию")
 
             print("Telethon client connected successfully")
-            return True
         except Exception as e:
             print(f"Ошибка при подключении к Telegram: {e}")
             return False
