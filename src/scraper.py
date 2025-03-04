@@ -16,32 +16,22 @@ DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
 _telethon_client: TelegramClient | None = None
 _telethon_init_lock = asyncio.Lock()
 
-def create_client():
-    session_path = os.path.join(os.getcwd(), 'sessions', "bot_session")
-    os.makedirs('sessions', exist_ok=True)
-    
-    client = TelegramClient(
-        session_path,
-        API_ID,
-        API_HASH
-    )
-    return client
+async def init_telethon_client() -> TelegramClient:
+    """
+    Создает\возвращает уже созданный Telethon-клиент.
+    """
+    global _telethon_client
+    # Блокируем доступ к клиенту с помощью _telethon_init_lock, чтобы избежать создания нескольких клиентов одновременно
+    async with _telethon_init_lock:
+        # Если уже есть клиент и он подключен — возвращаем
+        if _telethon_client and _telethon_client.is_connected():
+            return _telethon_client
 
-class TelegramScraper:
-    _client = None
-    running_tasks = {}
-    is_initialized = False
+        # Иначе создаем новый, если его нет
+        session_path = os.path.join(os.getcwd(), 'sessions', "bot_session")
+        os.makedirs('sessions', exist_ok=True)
 
-    def __init__(self, user_id):
-        self.user_id = user_id
-        self.db = SupabaseDB(supabase)
-        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
-        self.summarizer = Summarization(api_key=MISTRAL_KEY)
-        self.client = None
-
-    async def ensure_client_initialized(self):
-        """
-        Initialize the Telegram client if it is not already initialized.
+        client = TelegramClient(session_path, API_ID, API_HASH)
 
         The method checks whether the client is already initialized. If not, it creates the client,
         connects to the Telegram network, and marks the initialization as complete.
