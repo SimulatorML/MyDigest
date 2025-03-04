@@ -102,6 +102,7 @@ class TelegramScraper:
                  - 'channel_title': The title of the channel.
         :raises: Exception if message scraping fails.
         """
+        client = await init_telethon_client()
         entity = await self.get_entity(entity_name)
         if not entity:
             return []
