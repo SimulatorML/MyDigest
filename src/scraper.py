@@ -11,7 +11,10 @@ from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER
 from src.summarization import Summarization
 
 TIME_RANGE_24H = timedelta(hours=24)
-DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1) # Значение по умолчанию для check_new_messages
+DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
+
+_telethon_client: TelegramClient | None = None
+_telethon_init_lock = asyncio.Lock()
 
 def create_client():
     session_path = os.path.join(os.getcwd(), 'sessions', "bot_session")
