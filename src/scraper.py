@@ -52,9 +52,8 @@ async def init_telethon_client() -> TelegramClient:
             await client.disconnect()
             raise
 
-    async def get_entity(self, entity_name):
-        """
-        Retrieve a Telegram entity (such as a channel or user) by its name.
+        _telethon_client = client
+        return _telethon_client
 
         This method fetches the Telegram entity based on the provided name. It first ensures that
         the client is connected before attempting the retrieval.
