@@ -171,7 +171,6 @@ class TelegramScraper:
                                                     msg["message"],
                                                     msg["message_date"].isoformat()
                                                     )
-
                     aggregated_news.append({
                         "channel": channel["channel_name"].lstrip("@"),
                         "message": msg["message"],
