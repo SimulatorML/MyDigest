@@ -187,7 +187,6 @@ class TelegramScraper:
                 await self.bot.send_message(user_id,
                                             f"📢 <b> Ваш дайджест за последний час: </b>\n\n{digest}",
                                             parse_mode="HTML")
-
         except Exception as e:
             logging.error(f"Ошибка в check_new_messages: {e}")
             await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
