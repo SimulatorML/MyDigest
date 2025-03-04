@@ -189,7 +189,7 @@ class TelegramScraper:
                                             parse_mode="HTML")
         except Exception as e:
             logging.error(f"Ошибка в check_new_messages: {e}")
-            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+            await self.bot.send_message(user_id,"❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
         """
