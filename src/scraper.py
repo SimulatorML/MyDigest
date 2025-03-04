@@ -55,8 +55,8 @@ async def init_telethon_client() -> TelegramClient:
         _telethon_client = client
         return _telethon_client
 
-        This method fetches the Telegram entity based on the provided name. It first ensures that
-        the client is connected before attempting the retrieval.
+class TelegramScraper:
+    running_tasks = {}
 
         :param entity_name: The username or channel name of the Telegram entity.
         :return: The Telegram entity object if found, otherwise None.
