@@ -109,7 +109,6 @@ class TelegramScraper:
 
         now = datetime.utcnow()
         start_time = now - TIME_RANGE_24H
-
         channel_title = entity.title
 
         messages = []
