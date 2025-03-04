@@ -59,7 +59,7 @@ class Summarization:
             f''' Please categorize the following news summaries into a maximum of 5 broad, topic-based clusters. Each cluster should be grouped by similar topics, and the summaries should remain in their original format with each followed by its relevant link(s). 
                 Each topics must be closed into HTML tags highlighting them bold: <b>Topic</b>. Don't use ** to highlight topics with bold!
                 The topic labels must be written in Russian, and each topic must be followed by a new line.
-                Each topic should be introduced with a relevant emoji.
+                Each topic should be introduced with a one relevant emoji. Emoji should only be placed in front of topic.
                 Ensure the topics are broad and general; limit the number of topics to 5.
                 Do not include bullet points, numbering, or other list formats. Keep it clean and structured as requested.
                 Summaries text: \n{summaries_text}.'''
