@@ -67,7 +67,7 @@ async def init_telethon_client() -> TelegramClient:
                 print("Авторизация успешно завершена")
             else:
                 print("Используем существующую сессию")
-                
+
             print("Telethon client connected successfully")
             return True
         except Exception as e:
