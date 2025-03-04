@@ -33,29 +33,6 @@ async def init_telethon_client() -> TelegramClient:
 
         client = TelegramClient(session_path, API_ID, API_HASH)
 
-        The method checks whether the client is already initialized. If not, it creates the client,
-        connects to the Telegram network, and marks the initialization as complete.
-
-        :return: None.
-        :raises: Exception if client initialization or connection fails.
-        """
-        if not self.is_initialized:
-            if self._client is None:
-                self._client = create_client()
-            await self.connect()
-            self.is_initialized = True
-        self.client = self._client
-
-    async def connect(self):
-        """
-        Connect to the Telegram network using the Telethon client.
-
-        This method checks if the client is connected; if not, it connects and handles the user authorization.
-        If the user is not authorized, it starts the authorization process.
-
-        :return: True if the client is connected successfully, otherwise False.
-        :raises: Exception if connection or authorization fails.
-        """
         try:
             await client.connect()
             # Проверяем, авторизован ли пользователь
