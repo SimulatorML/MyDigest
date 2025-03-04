@@ -114,7 +114,7 @@ class TelegramScraper:
         messages = []
         while True:
             try:
-                async for message in self.client.iter_messages(entity, limit=limit):
+                async for message in client.iter_messages(entity, limit=limit):
                     message_date_naive = message.date.replace(tzinfo=None)
                     if message_date_naive >= start_time:
                         messages.append({
