@@ -216,8 +216,8 @@ class TelegramScraper:
             await asyncio.sleep(interval)  # Ждем перед следующей проверкой
 
     def stop_auto_news_check(self, user_id: int):
-        """
-        Stop the background task checking for new messages for the specified user.
+            """
+            Stop the background task checking for new messages for the specified user.
 
         This method cancels the background task associated with the user, effectively stopping
         further periodic message checks and digest updates.
