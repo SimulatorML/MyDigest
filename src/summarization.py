@@ -62,7 +62,7 @@ class Summarization:
                 Each topic should be introduced with a one relevant emoji. Emoji should only be placed in front of topic.
                 Ensure the topics are broad and general; limit the number of topics to 5.
                 Do not include bullet points, numbering, or other list formats. Keep it clean and structured as requested.
-                Summaries text: \n{summaries_text}.'''
+                Summaries text: \n{summaries_text}. '''
         )
 
         try:
