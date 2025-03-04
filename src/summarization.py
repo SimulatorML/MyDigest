@@ -56,8 +56,8 @@ class Summarization:
             return "No items available for clustering."
 
         prompt = (
-            f'''Please categorize the following news summaries into a maximum of 5 broad, topic-based clusters. Each cluster should be grouped by similar topics, and the summaries should remain in their original format with each followed by its relevant link(s). 
-                The topics must be closed into HTML tags: <b>Topic</b>. Don't use ** to highlight topics with bold!
+            f''' Please categorize the following news summaries into a maximum of 5 broad, topic-based clusters. Each cluster should be grouped by similar topics, and the summaries should remain in their original format with each followed by its relevant link(s). 
+                Each topics must be closed into HTML tags highlighting them bold: <b>Topic</b>. Don't use ** to highlight topics with bold!
                 The topic labels must be written in Russian, and each topic must be followed by a new line.
                 Each topic should be introduced with a relevant emoji.
                 Ensure the topics are broad and general; limit the number of topics to 5.
