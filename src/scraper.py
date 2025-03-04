@@ -66,6 +66,16 @@ class TelegramScraper:
 
     async def get_entity(self, entity_name: str):
         """
+               Retrieve a Telegram entity (such as a channel or user) by its name.
+
+               This method fetches the Telegram entity based on the provided name. It first ensures that
+               the client is connected before attempting the retrieval.
+
+               :param entity_name: The username or channel name of the Telegram entity.
+               :return: The Telegram entity object if found, otherwise None.
+               :raises: Exception if retrieval fails.
+               """
+        client = await init_telethon_client()
         try:
             if not self.client.is_connected():
                 await self.connect()
