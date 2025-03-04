@@ -57,10 +57,9 @@ async def init_telethon_client() -> TelegramClient:
         :raises: Exception if connection or authorization fails.
         """
         try:
-            if not self._client.is_connected():
-                await self._client.connect()
-            
-            if not await self._client.is_user_authorized():
+            await client.connect()
+            # Проверяем, авторизован ли пользователь
+            if not await client.is_user_authorized():
                 print("Начинаем процесс авторизации...")
                 await self._client.start(phone=PHONE_NUMBER)
                 await self._client.get_me()
