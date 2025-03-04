@@ -48,7 +48,9 @@ async def init_telethon_client() -> TelegramClient:
             print("Telethon client connected successfully")
         except Exception as e:
             print(f"Ошибка при подключении к Telegram: {e}")
-            return False
+            # Отключаем клиента, если произошла ошибка
+            await client.disconnect()
+            raise
 
     async def get_entity(self, entity_name):
         """
