@@ -12,14 +12,11 @@ CHANNEL_COMMANDS = [
 
 # Команды для работы с дайджестами
 DIGEST_COMMANDS = [
-    BotCommand(command="daily_digest", description="Дайджест за день"),
-    BotCommand(command="weekly_digest", description="Дайджест за неделю"),
     BotCommand(command="receive_news", description="Получить новые сообщения")
 ]
 
 # Общие команды
 COMMON_COMMANDS = [
-    BotCommand(command="start", description="Запустить бота"),
     BotCommand(command="help", description="Показать справку"),
 ]
 
