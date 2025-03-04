@@ -205,7 +205,6 @@ class TelegramScraper:
         """
         logging.info(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
 
-        # очистка старых новостей из таблицы channels_news при запуске проверки
         await self.db.cleanup_old_news()
 
         while user_id in TelegramScraper.running_tasks:
