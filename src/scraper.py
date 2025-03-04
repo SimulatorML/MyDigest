@@ -77,10 +77,9 @@ class TelegramScraper:
                """
         client = await init_telethon_client()
         try:
-            if not self.client.is_connected():
-                await self.connect()
-            
-            entity = await self.client.get_entity(entity_name)
+            if not client.is_connected():
+                await client.connect()
+            entity = await client.get_entity(entity_name)
             return entity
         except Exception as e:
             logging.error(f"Error getting entity {entity_name}: {e}")
