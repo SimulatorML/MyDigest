@@ -61,8 +61,9 @@ async def init_telethon_client() -> TelegramClient:
             # Проверяем, авторизован ли пользователь
             if not await client.is_user_authorized():
                 print("Начинаем процесс авторизации...")
-                await self._client.start(phone=PHONE_NUMBER)
-                await self._client.get_me()
+                # Запускаем процесс авторизации через номер телефона
+                await client.start(phone=PHONE_NUMBER)
+                await client.get_me()
                 print("Авторизация успешно завершена")
             else:
                 print("Используем существующую сессию")
