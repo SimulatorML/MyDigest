@@ -219,8 +219,8 @@ class TelegramScraper:
             """
             Stop the background task checking for new messages for the specified user.
 
-        This method cancels the background task associated with the user, effectively stopping
-        further periodic message checks and digest updates.
+            This method cancels the background task associated with the user, effectively stopping
+            further periodic message checks and digest updates.
 
         :param user_id: The unique identifier of the user.
         :return: True if the background task was successfully stopped, otherwise False.
