@@ -56,15 +56,13 @@ class Summarization:
             return "No items available for clustering."
 
         prompt = (
-            f'''Please gather the following news summaries into topic-based clusters: \n{summaries_text}. 
-            Group similar topics together and structure the output in the same format as the original summary,  
-            with each summary followed by its relevant link(s).  
-            Topics should be written in bold. Use HTML tags (<b> and </b>). Add additional \n after the topic. 
-            Use this format: <b> Topic </b> \n
-            No need to add any bullet numbers, bullets etc. 
-            Each topic must be preceded with one emoji related to the topic.
-            Topics must be in Russian language.
-            Make very broad topics, try to limit number of topics to max of 5'''
+            f'''Please categorize the following news summaries into a maximum of 5 broad, topic-based clusters. Each cluster should be grouped by similar topics, and the summaries should remain in their original format with each followed by its relevant link(s). 
+                The topics must be closed into HTML tags: <b>Topic</b>. Don't use ** to highlight topics with bold!
+                The topic labels must be written in Russian, and each topic must be followed by a new line.
+                Each topic should be introduced with a relevant emoji.
+                Ensure the topics are broad and general; limit the number of topics to 5.
+                Do not include bullet points, numbering, or other list formats. Keep it clean and structured as requested.
+                Summaries text: \n{summaries_text}.'''
         )
 
         try:
