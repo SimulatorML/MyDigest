@@ -58,9 +58,13 @@ async def init_telethon_client() -> TelegramClient:
 class TelegramScraper:
     running_tasks = {}
 
-        :param entity_name: The username or channel name of the Telegram entity.
-        :return: The Telegram entity object if found, otherwise None.
-        :raises: Exception if retrieval fails.
+    def __init__(self, user_id: int):
+        self.user_id = user_id
+        self.db = SupabaseDB(supabase)
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        self.summarizer = Summarization(api_key=MISTRAL_KEY)
+
+    async def get_entity(self, entity_name: str):
         """
         try:
             if not self.client.is_connected():
