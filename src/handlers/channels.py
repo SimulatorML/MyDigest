@@ -10,6 +10,7 @@ from aiogram.fsm.state import State, StatesGroup
 from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
+from src.scraper import init_telethon_client
 
 
 router = Router()
