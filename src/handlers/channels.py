@@ -98,30 +98,9 @@ async def process_channels_input(message: Message, state: FSMContext):
     if not channels_text:
         await message.answer("Пожалуйста, отправьте корректный список каналов.")
         return
-
-    # new_channels = process_channel_list(channels_text)
-
-    # Разделяем по пробелам
-    raw_channels = channels_text.split()
     
-    # Обрабатываем каждый канал
-    new_channels = set()
-    for channel in raw_channels:
-        try:
-            # Извлекаем имя канала из URL
-            channel_name = channel.split('/')[-1].strip()
-            
-            # Убираем все лишние символы
-            channel_name = re.sub(r'[^\w]', '', channel_name)
-            
-            # Добавляем @ в начало
-            if not channel_name.startswith('@'):
-                channel_name = f'@{channel_name}'
-                
-            new_channels.add(channel_name)
-        except Exception as e:
-            logging.error(f"Error processing channel {channel}: {str(e)}")
-            continue
+    # Обрабатываем список каналов
+    new_channels = process_channel_list(channels_text)
 
     if not new_channels:
         await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
