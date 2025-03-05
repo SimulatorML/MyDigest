@@ -67,10 +67,13 @@ async def process_help_command(message: Message):
 
 
 ############################## add_channels - Добавить каналы ######################
+
 @router.message(Command(commands="add_channels"))
 async def process_add_channels_command(message: Message, state: FSMContext):
     await message.answer(
-        "Пожалуйста, отправьте список каналов для добавления в формате: @channel1 @channel2"
+        "Жду список каналов 👀\n\n"
+        "Формат может быть произвольным.\n"
+        "Например: @channel1 https://t.me/channel2 channel3\n\n"
     )
     # Устанавливаем состояние ожидания ввода каналов
     await state.set_state(UserStates.waiting_for_channels)
@@ -79,12 +82,14 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 ### Обработчик для получения списка каналов
 @router.message(UserStates.waiting_for_channels)
 async def process_channels_input(message: Message, state: FSMContext):
-    # Проверяем, является ли сообщение командой
-    if message.text.startswith('/'):
+
+    # Сбрасываем состояние если сообщение - команда
+    if message.text and message.text.startswith('/'):
+        await message.answer(f"Вы отменили добавление каналов. \n\nПожалуйста, повторите нужную вам команду {message.text}")
         await state.clear()
-        await message.answer("Вы отменили добавление каналов. Пожалуйста, повторите нужную вам команду")
         return
 
+    # Получаем данные из сообщения
     user_id = message.from_user.id
     channels_text = message.text.strip()
     addition_timestamp = datetime.now().isoformat()
@@ -93,25 +98,48 @@ async def process_channels_input(message: Message, state: FSMContext):
         await message.answer("Пожалуйста, отправьте корректный список каналов.")
         return
 
-    new_channels = {ch.strip() for ch in channels_text.split() if ch.strip()}
+    # Разделяем по пробелам
+    raw_channels = channels_text.split()
+    
+    # Обрабатываем каждый канал
+    new_channels = set()
+    for channel in raw_channels:
+        try:
+            # Извлекаем имя канала из URL
+            channel_name = channel.split('/')[-1].strip()
+            
+            # Убираем все лишние символы
+            channel_name = re.sub(r'[^\w]', '', channel_name)
+            
+            # Добавляем @ в начало
+            if not channel_name.startswith('@'):
+                channel_name = f'@{channel_name}'
+                
+            new_channels.add(channel_name)
+        except Exception as e:
+            logging.error(f"Error processing channel {channel}: {str(e)}")
+            continue
 
-    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
-        await message.answer(
-            "Все каналы должны начинаться с одного символа '@', не содержать знаков препинания в конце названия и быть разделены пробелом. Попробуйте снова."
-        )
+    if not new_channels:
+        await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
         return
 
-    success = await db.add_user_channels(user_id, new_channels, addition_timestamp)
-    if success:
-        await message.answer(f"Каналы добавлены: {', '.join(new_channels)}")
-    else:
-        await message.answer("Ошибка при добавлении каналов. Попробуйте еще раз.")
-
-    # Сбрасываем состояние
-    await state.clear()
+    try:
+        success = await db.add_user_channels(user_id, list(new_channels), addition_timestamp)
+        if success:
+            channels_list = ', '.join(new_channels)
+            await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
+        else:
+            await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
+    except Exception as e:
+        logging.error(f"Error adding channels for user {user_id}: {str(e)}")
+        await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
+    finally:
+        await state.clear()
 
 
 ############################## show_channels - Показать каналы #####################
+
 @router.message(Command(commands="show_channels"))
 async def process_show_channels_command(message: Message):
     user_id = message.from_user.id
@@ -125,9 +153,16 @@ async def process_show_channels_command(message: Message):
 
 
 ############################## delete_channels - Удалить каналы #################
+
 # Обработчик для удаления каналов
 @router.message(Command(commands="delete_channels"))
 async def process_delete_command(message: Message, state: FSMContext):
+    # await message.answer(
+    #     "Жду список каналов для удаления 👀\n\n"
+    #     "Формат может быть произвольным.\n"
+    #     "Например: @channel1 https://t.me/channel2 channel3\n\n"
+    # )
+    
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
@@ -142,16 +177,16 @@ async def process_delete_command(message: Message, state: FSMContext):
         f"Введите канал или список каналов для удаления (например: @channel1 @channel2)"
     )
 
-    # Устанавливаем состояние ожидания ввода каналов
+    # Активируем состояние ожидания ввода каналов
     await state.set_state(UserStates.waiting_for_delete)
 
 ## Состояние ожидания ввода каналов для удаления
 @router.message(UserStates.waiting_for_delete)
 async def process_delete_channels(message: Message, state: FSMContext):
-    # Проверяем, является ли сообщение командой
-    if message.text.startswith('/'):
+    # Сбрасываем состояние если сообщение - другая оманда
+    if message.text and message.text.startswith('/'):
+        await message.answer(f"Вы отменили удаление каналов. \n\nПожалуйста, повторите нужную вам команду {message.text}")
         await state.clear()
-        await message.answer("Вы отменили удаление каналов. Пожалуйста, повторите нужную вам команду")
         return
 
     user_id = message.from_user.id
@@ -184,6 +219,7 @@ async def process_clear_command(message: Message):
 
 
 ############################## receive_news - Получить сводки новостей ############
+
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
     interval = 600  # modifiable
@@ -210,8 +246,9 @@ async def receive_news_handler(message: Message):
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
         logging.error(f"Error in receive_news_handler: {e}")
 
-##############################  FORWARD: Добавить каналы через пересылку #################
-@router.message(lambda message: message.forward_from_chat.type == 'channel')
+##############################  FORWARD: Добавить канал через пересылку #################
+
+@router.message(lambda message: message.forward_from_chat and message.forward_from_chat.type == 'channel')
 async def handle_forwarded_message(message: Message):
     
     user_id = message.from_user.id
@@ -236,12 +273,12 @@ async def handle_forwarded_message(message: Message):
         await message.delete()
         return
 
+############################## Прием сообщений или неверных команд #############################
 
-# # Хэндлер для всех остальных сообщений
-# @router.message()
-# async def process_other_messages(message: Message):
+@router.message()
+async def process_other_messages(message: Message):
 
-#     await message.answer(
-#         "Я понимаю только команды. Используйте /help, "
-#         "чтобы увидеть список доступных команд или нажмите на шапку бота."
-#     )
+    await message.answer(
+        "Я понимаю только команды. Используйте /help, "
+        "чтобы увидеть список доступных команд или нажмите на Меню."
+    )
