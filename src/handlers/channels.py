@@ -99,6 +99,8 @@ async def process_channels_input(message: Message, state: FSMContext):
         await message.answer("Пожалуйста, отправьте корректный список каналов.")
         return
 
+    # new_channels = process_channel_list(channels_text)
+
     # Разделяем по пробелам
     raw_channels = channels_text.split()
     
@@ -282,7 +284,11 @@ async def handle_forwarded_message(message: Message):
 
 @router.message()
 async def process_other_messages(message: Message):
-
+    # Если без причины нажать на /cancel
+    if message.text == "/cancel":
+        await message.answer("Нечего отменять 🤷‍♂️")
+        return
+    # Если неизвестная команды или текст или пересылка из лички
     await message.answer(
         "Я понимаю только команды. Используйте /help, "
         "чтобы увидеть список доступных команд или нажмите на Меню."
