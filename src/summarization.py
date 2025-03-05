@@ -1,5 +1,7 @@
+import logging
 from mistralai import Mistral
 from typing import List, Dict, Union
+
 
 class Summarization:
     def __init__(self, api_key: str, model: str = "mistral-large-latest") -> None:
@@ -23,15 +25,15 @@ class Summarization:
 
         prompt = (
             f'''You are provided with a list of news items.
-            Each news item is represented as a dictionary with keys 'channel', 'message', 'message_id' and 'channel_title' 
-            Here is the list: {news}. 
-            If some news items are similar in context, cluster them together and produce one summary for the cluster. 
-            Create a list where each line contains a summary in Russian (no longer than 150 characters) and, on the next line, 
-            attach the relevant link(s) to the original news item(s). No need to add any bullet numbers, bullets etc. 
-            Make sure that line with links is preceded with '<i>Подробнее: </i>' 
+            Each news item is represented as a dictionary with keys 'channel', 'message', 'message_id' and 'channel_title'
+            Here is the list: {news}.
+            If some news items are similar in context, cluster them together and produce one summary for the cluster.
+            Create a list where each line contains a summary in Russian (no longer than 150 characters) and, on the next line,
+            attach the relevant link(s) to the original news item(s). No need to add any bullet numbers, bullets etc.
+            Make sure that line with links is preceded with '<i>Подробнее: </i>'
             The link for each news item should be in the format:<a href="https://t.me/{{channel}}/{{message_id}}">{{channel_title}}</a>
-            If clustered, include all relevant links separated by commas. 
-            Make sure to use the exact channel name provided (without a leading '@'). 
+            If clustered, include all relevant links separated by commas.
+            Make sure to use the exact channel name provided (without a leading '@').
             Structure the output so that each summary is followed on a new line by its corresponding link(s) and separated with \n'''
         )
 
@@ -42,7 +44,7 @@ class Summarization:
             )
             return response.choices[0].message.content
         except Exception as e:
-            print(f"Ошибка генерации дайджеста: {e}")
+            logging.error("Ошибка генерации дайджеста: %s", e)
             return "Failed to generate the summary."
 
     def cluster_summaries(self, summaries_text: str) -> str:
@@ -56,7 +58,7 @@ class Summarization:
             return "No items available for clustering."
 
         prompt = (
-            f''' Please categorize the following news summaries into a maximum of 5 broad, topic-based clusters. Each cluster should be grouped by similar topics, and the summaries should remain in their original format with each followed by its relevant link(s). 
+            f''' Please categorize the following news summaries into a maximum of 5 broad, topic-based clusters. Each cluster should be grouped by similar topics, and the summaries should remain in their original format with each followed by its relevant link(s).
                 Each topics must be closed into HTML tags highlighting them bold: <b>Topic</b>. Don't use ** to highlight topics with bold!
                 The topic labels must be written in Russian, and each topic must be followed by a new line.
                 Each topic should be introduced with a one relevant emoji. Emoji should only be placed in front of topic.
@@ -72,5 +74,5 @@ class Summarization:
             )
             return response.choices[0].message.content
         except Exception as e:
-            print(f"Error during clustering: {e}")
+            logging.error("Error during clustering: %s", e) 
             return "Failed to produce the final digest."
