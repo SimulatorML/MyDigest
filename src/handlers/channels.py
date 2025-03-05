@@ -87,7 +87,7 @@ async def process_channels_input(message: Message, state: FSMContext):
 
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
-        await message.answer(f"Вы отменили добавление каналов.")
+        await message.answer(f"Вы отменили добавление каналов 👌")
         await state.clear()
         return
 
@@ -165,7 +165,7 @@ async def process_delete_command(message: Message, state: FSMContext):
 async def process_delete_channels(message: Message, state: FSMContext):
     # Сбрасываем состояние если сообщение - другая команда
     if message.text.startswith('/'):
-        await message.answer(f"Вы отменили удаление каналов.")
+        await message.answer(f"Вы отменили удаление 👌")
         await state.clear()
         return
 
@@ -187,7 +187,7 @@ async def process_delete_channels(message: Message, state: FSMContext):
 
     result = await db.delete_user_channels(user_id, list(channels_to_delete))
     if not result:
-        await message.answer("Произошла ошибка при удалении каналов.")
+        await message.answer("Произошла ошибка при удалении каналов\nили неверно введены данные.")
         return
 
     await message.answer(f"Каналы удалены: {', '.join(channels_to_delete)}")
@@ -223,6 +223,7 @@ async def process_clear_command(message: Message):
         reply_markup=markup
     )
 
+# Если пользователь подтвердил удаление
 @router.callback_query(F.data == "confirm_clear")
 async def process_clear_confirm(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -237,6 +238,7 @@ async def process_clear_confirm(callback: CallbackQuery):
             "❌ Произошла ошибка при очистке каналов."
         )
 
+# если пользователь отменил удаление
 @router.callback_query(F.data == "cancel_clear")
 async def process_clear_cancel(callback: CallbackQuery):
     await callback.message.edit_text(
