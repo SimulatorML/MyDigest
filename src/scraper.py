@@ -16,6 +16,7 @@ DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
 _telethon_client: TelegramClient | None = None
 _telethon_init_lock = asyncio.Lock()
 
+
 async def init_telethon_client() -> TelegramClient:
     """
     Создает\возвращает уже созданный Telethon-клиент.
@@ -37,23 +38,24 @@ async def init_telethon_client() -> TelegramClient:
             await client.connect()
             # Проверяем, авторизован ли пользователь
             if not await client.is_user_authorized():
-                print("Начинаем процесс авторизации...")
+                logging.info("\nНачинаем процесс авторизации...\n")
                 # Запускаем процесс авторизации через номер телефона
                 await client.start(phone=PHONE_NUMBER)
                 await client.get_me()
-                print("Авторизация успешно завершена")
+                logging.info("\nАвторизация успешно завершена\n")
             else:
-                print("Используем существующую сессию")
+                logging.info("\nИспользуем существующую сессию\n")
 
-            print("Telethon client connected successfully")
+            logging.info("\nTelethon client connected successfully\n")
         except Exception as e:
-            print(f"Ошибка при подключении к Telegram: {e}")
+            logging.info("Ошибка при подключении к Telegram: %s", e)
             # Отключаем клиента, если произошла ошибка
             await client.disconnect()
             raise
 
         _telethon_client = client
         return _telethon_client
+
 
 class TelegramScraper:
     running_tasks = {}
@@ -82,7 +84,7 @@ class TelegramScraper:
             entity = await client.get_entity(entity_name)
             return entity
         except Exception as e:
-            logging.error(f"Error getting entity {entity_name}: {e}")
+            logging.error("Error getting entity %s: %s", entity_name, e)
             return None
 
     async def scrape_messages(self, entity_name: str, limit: int = 1000) -> List[Dict[str, Union[int, str, datetime]]]:
@@ -127,10 +129,10 @@ class TelegramScraper:
                         break
                 break
             except errors.FloodWaitError as e:
-                logging.warning(f"FloodWait на {e.seconds} секунд...")
+                logging.warning("\nFloodWait на {e.seconds} секунд...\n")
                 await asyncio.sleep(e.seconds)
             except Exception as e:
-                logging.error(f"Failed to scrape messages: {e}")
+                logging.error("Failed to scrape messages: %s", e)
                 break
         return messages
 
@@ -188,8 +190,8 @@ class TelegramScraper:
                                             f"📢 <b> Ваш дайджест за последний час: </b>\n\n{digest}",
                                             parse_mode="HTML")
         except Exception as e:
-            logging.error(f"Ошибка в check_new_messages: {e}")
-            await self.bot.send_message(user_id,"❌ Ошибка при получении дайджеста. Попробуйте позже.")
+            logging.error("Ошибка в check_new_messages: %s", e)
+            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
         """
@@ -203,31 +205,31 @@ class TelegramScraper:
         :return: None.
         :raises: Exception if the background task fails to start.
         """
-        logging.info(f"🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...")
+        logging.info("\n🔍 Запускаю фоновую проверку для пользователя %s (интервал %s мин)...\n", user_id, interval // 60)
 
         await self.db.cleanup_old_news()
 
         while user_id in TelegramScraper.running_tasks:
-            logging.info(f"\n🔄 Проверка новых сообщений для {user_id}...\n")
+            logging.info("\n🔄 Проверка новых сообщений для %s...\n", user_id)
             await self.check_new_messages(user_id, time_range=DEFAULT_TIME_RANGE_HOURS)  # Проверяем новые сообщения за последний час
-            logging.info(f"\n✅ Проверка завершена {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. "
-                         f"Следующая через {interval // 60} минут.\n")
+            logging.info("\n✅ Проверка завершена %s. Следующая через %s минут.\n",
+                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'), interval // 60)
 
             await asyncio.sleep(interval)  # Ждем перед следующей проверкой
 
     def stop_auto_news_check(self, user_id: int):
-            """
-            Stop the background task checking for new messages for the specified user.
+        """
+        Stop the background task checking for new messages for the specified user.
 
-            This method cancels the background task associated with the user, effectively stopping
-            further periodic message checks and digest updates.
+        This method cancels the background task associated with the user, effectively stopping
+        further periodic message checks and digest updates.
 
-            :param user_id: The unique identifier of the user.
-            :return: True if the background task was successfully stopped, otherwise False.
-            :raises: Exception if stopping the task fails.
-            """
-            if user_id in TelegramScraper.running_tasks:
-                TelegramScraper.running_tasks[user_id].cancel()
-                del TelegramScraper.running_tasks[user_id]
-                return True
-            return False
+        :param user_id: The unique identifier of the user.
+        :return: True if the background task was successfully stopped, otherwise False.
+        :raises: Exception if stopping the task fails.
+        """
+        if user_id in TelegramScraper.running_tasks:
+            TelegramScraper.running_tasks[user_id].cancel()
+            del TelegramScraper.running_tasks[user_id]
+            return True
+        return False
