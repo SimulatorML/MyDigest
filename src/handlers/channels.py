@@ -255,11 +255,11 @@ async def receive_news_handler(message: Message):
 
     user_id = message.from_user.id
     scraper = TelegramScraper(user_id)
-    
+
     try:
         # Инициализируем клиент только при первом запросе
         await init_telethon_client()
-        
+
         if scraper.stop_auto_news_check(user_id):
             await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
@@ -272,7 +272,7 @@ async def receive_news_handler(message: Message):
         )
     except Exception as e:
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
-        logging.error(f"Error in receive_news_handler: {e}")
+        logging.error("Error in receive_news_handler: %s", e)
 
 ##############################  FORWARD: Добавить канал через пересылку #################
 

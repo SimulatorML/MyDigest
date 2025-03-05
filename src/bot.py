@@ -12,7 +12,7 @@ class DigestBot:
         # Initialize bot and dispatcher
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.dp = Dispatcher(storage=MemoryStorage())
-        
+
         # Register routers
         self.dp.include_router(channels_router)
 
@@ -29,7 +29,7 @@ class DigestBot:
                 on_shutdown=self._on_shutdown
             )
         except Exception as e:
-            logging.error(f"Error during bot startup: {e}")
+            logging.error("Error during bot startup: %s", e)
             raise
         finally:
             await self.bot.session.close()
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         ]
     )
     logger = logging.getLogger(__name__)
-    
+
     # Create and start bot
     digest_bot = DigestBot()
     digest_bot.start()
