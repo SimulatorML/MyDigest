@@ -4,7 +4,8 @@ import logging
 from datetime import datetime
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message
+from aiogram import F
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from src.scraper import TelegramScraper
@@ -193,15 +194,54 @@ async def process_delete_channels(message: Message, state: FSMContext):
     # Сбрасываем состояние
     await state.clear()
 
-## Обработчик для полной очистки каналов
+
+############################## clear_channels - Очистить каналы #################
+
 @router.message(Command(commands="clear_channels"))
 async def process_clear_command(message: Message):
-    user_id = message.from_user.id
+    # Создаем объекты инлайн-кнопок
+    confirm_button = InlineKeyboardButton(
+        text='✅ Да, очистить',
+        callback_data='confirm_clear'
+    )
+    cancel_button = InlineKeyboardButton(
+        text='❌ Отмена',
+        callback_data='cancel_clear'
+    )
+    
+    # Добавляем кнопки в клавиатуру в один ряд
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [confirm_button, cancel_button]
+    ]
+    
+    # Создаем объект инлайн-клавиатуры
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
+    await message.answer(
+        text='⚠️Вы уверены, что хотите удалить ВСЕ каналы?\n'
+             'Это действие необратимо.',
+        reply_markup=markup
+    )
+
+@router.callback_query(F.data == "confirm_clear")
+async def process_clear_confirm(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    
     result = await db.clear_user_channels(user_id)
-    if not result:
-        await message.answer("Произошла ошибка при очистке каналов.")
-        return
-    await message.answer("Все каналы удалены.")
+    if result:
+        await callback.message.edit_text(
+            "✅ Все каналы успешно удалены."
+        )
+    else:
+        await callback.message.edit_text(
+            "❌ Произошла ошибка при очистке каналов."
+        )
+
+@router.callback_query(F.data == "cancel_clear")
+async def process_clear_cancel(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "Операция отменена. Ваши каналы остались без изменений."
+    )
 
 
 ############################## receive_news - Получить сводки новостей ############
