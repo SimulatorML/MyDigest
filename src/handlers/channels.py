@@ -71,9 +71,10 @@ async def process_help_command(message: Message):
 @router.message(Command(commands="add_channels"))
 async def process_add_channels_command(message: Message, state: FSMContext):
     await message.answer(
-        "Жду список каналов 👀\n\n"
-        "Формат может быть произвольным.\n"
-        "Например: @channel1 https://t.me/channel2 channel3\n\n"
+        f"Жду список каналов 👀\n\n"
+        f"Формат может быть произвольным.\n"
+        f"Например: @channel1 https://t.me/channel2 channel3\n\n"
+        f"Если передумали - нажмите 👉 /cancel"
     )
     # Устанавливаем состояние ожидания ввода каналов
     await state.set_state(UserStates.waiting_for_channels)
@@ -85,7 +86,7 @@ async def process_channels_input(message: Message, state: FSMContext):
 
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
-        await message.answer(f"Вы отменили добавление каналов. \n\nПожалуйста, повторите нужную вам команду {message.text}")
+        await message.answer(f"Вы отменили добавление каналов.")
         await state.clear()
         return
 
@@ -157,15 +158,11 @@ async def process_show_channels_command(message: Message):
 # Обработчик для удаления каналов
 @router.message(Command(commands="delete_channels"))
 async def process_delete_command(message: Message, state: FSMContext):
-    # await message.answer(
-    #     "Жду список каналов для удаления 👀\n\n"
-    #     "Формат может быть произвольным.\n"
-    #     "Например: @channel1 https://t.me/channel2 channel3\n\n"
-    # )
     
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
+    # Проверяем, есть ли у пользователя добавленные каналы
     if not channels:
         await message.answer("У вас нет добавленных каналов для удаления.")
         return
@@ -174,7 +171,8 @@ async def process_delete_command(message: Message, state: FSMContext):
     await message.answer(
         f"Текущий список ваших каналов:\n"
         f"{', '.join(channel_names)}\n\n"
-        f"Введите канал или список каналов для удаления (например: @channel1 @channel2)"
+        f"Введите канал или список каналов для удаления\n\n"
+        f"Если передумали - нажмите 👉 /cancel"
     )
 
     # Активируем состояние ожидания ввода каналов
@@ -183,22 +181,29 @@ async def process_delete_command(message: Message, state: FSMContext):
 ## Состояние ожидания ввода каналов для удаления
 @router.message(UserStates.waiting_for_delete)
 async def process_delete_channels(message: Message, state: FSMContext):
-    # Сбрасываем состояние если сообщение - другая оманда
-    if message.text and message.text.startswith('/'):
-        await message.answer(f"Вы отменили удаление каналов. \n\nПожалуйста, повторите нужную вам команду {message.text}")
+    # Сбрасываем состояние если сообщение - другая команда
+    if message.text.startswith('/'):
+        await message.answer(f"Вы отменили удаление каналов.")
         await state.clear()
         return
 
     user_id = message.from_user.id
-    channels_to_delete = {ch.strip() for ch in message.text.split() if ch.strip()}
+
+    # Обрабатываем список каналов
+    channels_to_delete = process_channel_list(message.text)
+
+    if not channels_to_delete:
+        await message.answer("Не удалось распознать ни одного канала. Пожалуйста, попробуйте снова.")
+        return
 
     if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in channels_to_delete):
         await message.answer(
-            "Все каналы должны начинаться с одного символа '@', не содержать знаков препинания в конце названия и быть разделены пробелом. Попробуйте снова."
+            "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
+            "Пожалуйста, проверьте правильность написания и попробуйте снова."
         )
         return
 
-    result = await db.delete_user_channels(user_id, channels_to_delete)
+    result = await db.delete_user_channels(user_id, list(channels_to_delete))
     if not result:
         await message.answer("Произошла ошибка при удалении каналов.")
         return
@@ -282,3 +287,47 @@ async def process_other_messages(message: Message):
         "Я понимаю только команды. Используйте /help, "
         "чтобы увидеть список доступных команд или нажмите на Меню."
     )
+
+
+############################## Функция обработки списка каналов #############################
+def process_channel_list(channels_text: str) -> set[str]:
+    """
+    Обрабатывает список каналов из текста и возвращает множество корректных имен каналов.
+    
+    Args:
+        channels_text (str): Текст со списком каналов
+        
+    Returns:
+        set[str]: Множество обработанных имен каналов
+    """
+    # Разделяем по пробелам и запятым
+    raw_channels = re.split(r'[,\s]+', channels_text)
+    
+    # Обрабатываем каждый канал
+    processed_channels = set()
+    for channel in raw_channels:
+        try:
+            # Очищаем от пробелов
+            channel = channel.strip()
+            if not channel:
+                continue
+                
+            # Извлекаем имя канала из URL
+            channel_name = channel.split('/')[-1].strip()
+            
+            # Убираем все лишние символы
+            channel_name = re.sub(r'[^\w]', '', channel_name)
+            
+            # Добавляем @ в начало
+            if not channel_name.startswith('@'):
+                channel_name = f'@{channel_name}'
+                
+            processed_channels.add(channel_name)
+        except Exception as e:
+            logging.error(f"Error processing channel {channel}: {str(e)}")
+            continue
+            
+    return processed_channels
+
+
+
