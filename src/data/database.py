@@ -1,4 +1,4 @@
-# import asyncio
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from supabase import create_client, Client
@@ -17,7 +17,7 @@ class SupabaseErrorHandler:
             ConnectionError: ("ConnectionError", 503),
         }
         msg = f"{error_map.get(type(e))[0]} у пользователя {user_id}: {str(e)}" if user_id else f"{error_map.get(type(e))[0]} у канала {channel_id}: {str(e)}"
-        print(msg)  # В будущем заменить на логирование
+        logging.error(msg)  # В будущем заменить на логирование
 
 
 class SupabaseDB:
@@ -69,9 +69,9 @@ class SupabaseDB:
                 .execute()
             )
             if response.data:
-                print("Пользователь успешно добавлен или обновлен.")
+                logging.info("Пользователь успешно добавлен или обновлен.")
             else:
-                print(f"Ошибка при добавлении пользователя: {response.data}")
+                logging.info("Ошибка при добавлении пользователя: %s", response.data)
             return response.data
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
@@ -247,7 +247,7 @@ class SupabaseDB:
                 "addition_timestamp", cutoff_time
             ).execute()
         except Exception as e:
-            print(f"Ошибка при очистке старых новостей: {e}")
+            logging.error("Ошибка при очистке старых новостей: %s", e)
 
     async def save_user_digest(
         self,
