@@ -141,7 +141,6 @@ class SupabaseDB:
             # Получаем список всех каналов, включая неактивные
             existing_channels = await self.fetch_all_user_channels(user_id)
             existing_names = {ch["channel_name"] for ch in existing_channels} if existing_channels else set()
-            
             # Разделяем каналы на существующие и новые
             existing_to_update = [ch for ch in channels if ch in existing_names]
             new_to_add = [ch for ch in channels if ch not in existing_names]
@@ -163,7 +162,7 @@ class SupabaseDB:
                     "is_active": True
                 } for channel in new_to_add
                 ]
-                
+
                 if new_data:
                     self.client.table("user_channels").upsert(new_data).execute()
 
@@ -239,7 +238,7 @@ class SupabaseDB:
     async def cleanup_old_news(self):
         """
         Cleanup old news pieces from the database.
-        
+
         This method deletes all news pieces older than 1 day from the database.
         """
         try:
