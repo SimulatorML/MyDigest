@@ -14,5 +14,5 @@ bot.log
 *.session
 mydigest/
 *.session-journal
-session/
+sessions/
 manuals/

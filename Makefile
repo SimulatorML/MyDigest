@@ -1,22 +1,34 @@
 .PHONY: setup run clean help
 
 VENV_NAME=mydigest
+VENV_BIN = $(VENV_NAME)/bin
 PYTHON_VERSION=python3
 
+# Determine OS and adjust paths
+ifeq ($(OS),Windows_NT)
+	VENV_BIN = $(VENV_NAME)/Scripts
+	PYTHON_VERSION = python
+endif
 
 setup:
 	@echo "Creating environment ..."
 	$(PYTHON_VERSION) -m venv $(VENV_NAME)
 	@echo "Installing requirements ..."
-	$(VENV_NAME)/bin/pip install -r requirements.txt
+	$(VENV_BIN)/pip install -r requirements.txt
 
 run:
 	@echo "Running bot ..."
-	$(VENV_NAME)/bin/python -m src.bot
+	$(VENV_BIN)/python -m src.bot
 
 clean:
-	@echo "Removing conda environment ..."
+ifeq ($(OS),Windows_NT)
+	@echo "Removing environment (Windows)..."
+	rmdir /s /q $(VENV_NAME)
+else
+	@echo "Removing environment (macOS/Linux)..."
 	rm -rf $(VENV_NAME)
+endif
+
 
 help:
 	@echo "Available commands:"
