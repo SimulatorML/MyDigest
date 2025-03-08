@@ -97,14 +97,14 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 ### Обработчик для получения списка каналов
 @router.message(UserStates.waiting_for_channels)
 async def process_channels_input(message: Message, state: FSMContext):
-
+    ### Протекция
     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
         await forwarded_message(message)
         return
 
     # Если это пересылка от юзера группы или канала, то пишем что это человек
-    if message.forward_from_chat.type in ['group', 'channel']
+    if message.forward_from_chat.type in ['group', 'channel']:
         await message.answer("Вы переслали сообщение от человека 🧍, а не от группы.\n\n Перешлите пост из канала)")
         return
 
@@ -114,6 +114,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         await state.clear()
         return
 
+    ### Если это всё таки список каналов, то
     # Получаем данные из сообщения
     user_id = message.from_user.id
     channels_text = message.text.strip()
