@@ -265,6 +265,8 @@ async def receive_news_handler(message: Message):
     divider = 60    # modifiable
 
     user_id = message.from_user.id
+    #Marking the user in the db who is CURRENTLY using the bot
+    await db.set_user_receiving_news(user_id, True)
     scraper = TelegramScraper(user_id)
 
     try:
@@ -284,6 +286,17 @@ async def receive_news_handler(message: Message):
     except Exception as e:
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
         logging.error("Error in receive_news_handler: %s", e)
+
+############################## stop_news Остановить получение сводки новостей #################
+@router.message(Command("stop_news"))
+async def stop_news_handler(message: Message):
+
+    user_id = message.from_user.id
+    await db.set_user_receiving_news(user_id, False)
+    await message.answer(
+        "Вы остановили получение новостей. "
+        "Для повторного получения новостей, пожалуйста, вызовите /receive_news"
+    )
 
 ##############################  FORWARD: Добавить канал через пересылку #################
 
