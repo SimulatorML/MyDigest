@@ -76,6 +76,43 @@ class SupabaseDB:
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
+    async def set_user_receiving_news(self, user_id: int, is_receiving: bool) -> bool:
+        """
+        Set bool for users who are receiving news
+        :param user_id:
+        :param is_receiving:
+        :return:
+        """
+        try:
+            response = (
+                self.client.table("users")
+                .update({"is_receiving_news": is_receiving})
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return bool(response.data)
+        except Exception as e:
+            SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
+
+
+    async def retrieve_current_users(self) -> List[Dict[str, Any]]:
+        """
+        Retrieve users who are receiving news
+        :param self
+        :return:
+        """
+        try:
+           response = (
+                self.client.table("users")
+                .select("user_id")
+                .eq("is_receiving_news", True)
+                .execute()
+            )
+           return response
+        except Exception as e:
+            SupabaseErrorHandler.handle_error(e, None, None)
+
     async def fetch_user_channels(self, user_id: int) -> List[Dict[str, Any]]:
         """
         Retrieve the channels associated with a given user from the database.
