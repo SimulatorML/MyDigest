@@ -31,10 +31,12 @@ class DigestBot:
         finally:
             await self.bot.session.close()
 
-    async def _on_startup(self, dp: Dispatcher):
-        # Setup bot commands
-        await self.bot.delete_my_commands()
-        await self.bot.set_my_commands(ALL_COMMANDS)
+
+    async def _on_startup(self, bot: Bot):
+
+        active_users = await db.retrieve_current_users()
+        await bot.delete_my_commands()
+        await bot.set_my_commands(ALL_COMMANDS)
         logging.info("Bot started successfully")
 
     async def _on_shutdown(self, dp: Dispatcher):
