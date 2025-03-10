@@ -258,6 +258,8 @@ async def receive_news_handler(message: Message):
     divider = 60    # modifiable
 
     user_id = message.from_user.id
+    #Marking the user in the db who is CURRENTLY using the bot
+    await db.set_user_receiving_news(user_id, True)
     scraper = TelegramScraper(user_id)
 
     try:
