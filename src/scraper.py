@@ -226,12 +226,12 @@ class TelegramScraper:
             This method cancels the background task associated with the user, effectively stopping
             further periodic message checks and digest updates.
 
-        :param user_id: The unique identifier of the user.
-        :return: True if the background task was successfully stopped, otherwise False.
-        :raises: Exception if stopping the task fails.
-        """
-        if user_id in TelegramScraper.running_tasks:
-            TelegramScraper.running_tasks[user_id].cancel()
-            del TelegramScraper.running_tasks[user_id]
-            return True
-        return False
+            :param user_id: The unique identifier of the user.
+            :return: True if the background task was successfully stopped, otherwise False.
+            :raises: Exception if stopping the task fails.
+            """
+            if user_id in TelegramScraper.running_tasks:
+                TelegramScraper.running_tasks[user_id].cancel()
+                del TelegramScraper.running_tasks[user_id]
+                return True
+            return False
