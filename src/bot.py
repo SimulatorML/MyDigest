@@ -39,8 +39,17 @@ class DigestBot:
         await bot.set_my_commands(ALL_COMMANDS)
         logging.info("Bot started successfully")
 
-    async def _on_shutdown(self, dp: Dispatcher):
-        """Shutdown handler"""
+        await init_telethon_client()
+        if active_users:
+            for user in active_users.data:
+                user_id = user["user_id"]
+                scraper = TelegramScraper(user_id)
+                task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=600))
+                TelegramScraper.running_tasks[user_id] = task
+
+        logging.info("Bot started successfully and tasks re-launched for active users")
+
+    async def _on_shutdown(self, bot: Bot):
         logging.info("Bot is shutting down")
         await self.bot.session.close()
 
