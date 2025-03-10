@@ -55,7 +55,6 @@ async def init_telethon_client() -> TelegramClient:
         _telethon_client = client
         return _telethon_client
 
-
 class TelegramScraper:
     running_tasks = {}
 
