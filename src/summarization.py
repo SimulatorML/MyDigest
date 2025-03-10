@@ -32,8 +32,8 @@ class Summarization:
             attach the relevant link(s) to the original news item(s). No need to add any bullet numbers, bullets etc. 
             Make sure that line with links is preceded with '<i>Источник: </i>' 
             The link for each news item should be in the format:<a href="https://t.me/{{channel}}/{{message_id}}">{{channel_title}}</a>
-            If clustered, include all relevant links separated by commas.
-            Make sure to use the exact channel name provided (without a leading '@').
+            If clustered, include all relevant links separated by spaces following this symbol | and space again. So this structure: link | link | link. 
+            Make sure to use the exact channel name provided (without a leading '@'). 
             Structure the output so that each summary is followed on a new line by its corresponding link(s) and separated with \n'''
         )
 
