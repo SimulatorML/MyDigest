@@ -21,6 +21,8 @@ class DigestBot:
         asyncio.run(self._start_polling())
 
     async def _start_polling(self):
+        self.dp.startup.register(self._on_startup)
+        self.dp.shutdown.register(self._on_shutdown)
         try:
             # Start polling
             await self.dp.start_polling(
