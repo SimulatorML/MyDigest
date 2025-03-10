@@ -75,5 +75,5 @@ class Summarization:
             )
             return response.choices[0].message.content
         except Exception as e:
-            logging.error("Error during clustering: %s", e) 
+            logging.error("Error during clustering: %s", e)
             return "Failed to produce the final digest."
