@@ -8,6 +8,7 @@ from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client
 
+db = SupabaseDB(supabase)
 
 class DigestBot:
     def __init__(self):
