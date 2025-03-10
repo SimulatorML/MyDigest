@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from mistralai import Mistral
 from typing import List, Dict, Union
 
@@ -7,7 +8,7 @@ class Summarization:
         self.client = Mistral(api_key=api_key)
         self.model = model
 
-    def summarize_news_items(self, news: List[Dict[str, Union[str, int]]]) -> str:
+    async def summarize_news_items(self, news: List[Dict[str, Union[str, int]]]) -> str:
         """
         Generates a summarized version of provided news items, clustering similar ones together.
 
@@ -37,7 +38,8 @@ class Summarization:
         )
 
         try:
-            response = self.client.chat.complete(
+            response = await asyncio.to_thread(
+                self.client.chat.complete,
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -46,7 +48,7 @@ class Summarization:
             logging.error("Ошибка генерации дайджеста: %s", e)
             return "Failed to generate the summary."
 
-    def cluster_summaries(self, summaries_text: str) -> str:
+    async def cluster_summaries(self, summaries_text: str) -> str:
         """
         Clusters summarized news items based on similar topics.
 
