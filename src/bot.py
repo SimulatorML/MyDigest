@@ -51,7 +51,7 @@ class DigestBot:
 
     async def _on_shutdown(self, bot: Bot):
         logging.info("Bot is shutting down")
-        await self.bot.session.close()
+        await bot.session.close()
 
 
 if __name__ == '__main__':
