@@ -16,7 +16,6 @@ DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
 _telethon_client: TelegramClient | None = None
 _telethon_init_lock = asyncio.Lock()
 
-
 async def init_telethon_client() -> TelegramClient:
     """
     Создает\возвращает уже созданный Telethon-клиент.
