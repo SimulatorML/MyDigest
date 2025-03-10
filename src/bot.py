@@ -33,7 +33,11 @@ class DigestBot:
 
 
     async def _on_startup(self, bot: Bot):
-
+        """
+        This is called when the bot starts up
+        When the bot starts up, it retrieves users who are currently receiving news.
+        It automatically starts the scraper once the bot is relaunched.
+        """
         active_users = await db.retrieve_current_users()
         await bot.delete_my_commands()
         await bot.set_my_commands(ALL_COMMANDS)
