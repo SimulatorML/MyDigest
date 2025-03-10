@@ -24,12 +24,7 @@ class DigestBot:
         self.dp.startup.register(self._on_startup)
         self.dp.shutdown.register(self._on_shutdown)
         try:
-            # Start polling
-            await self.dp.start_polling(
-                self.bot,
-                on_startup=self._on_startup,
-                on_shutdown=self._on_shutdown
-            )
+            await self.dp.start_polling(self.bot)
         except Exception as e:
             logging.error("Error during bot startup: %s", e)
             raise
