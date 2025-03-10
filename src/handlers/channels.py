@@ -3,11 +3,11 @@ import re
 import logging
 from datetime import datetime
 from aiogram import Router
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram import F
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.state import State, StatesGroup, default_state
 from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
@@ -24,11 +24,12 @@ class UserStates(StatesGroup):
 @router.message(CommandStart())
 async def process_start_command(message: Message):
     sent_message = await message.answer(
-        "Привет 🙂 Я бот для создания дайджестов из Telegram каналов и чатов.\n\n"
-        "1️⃣Сначала добавьте каналы:"
-        "       способ 1: просто перешлите сюда пост из канала\n"
-        "       способ 2: нажмите на /add_channels, затем вставьте список каналов\n"
-        "2️⃣Нажмите на /receive_news, чтобы сводки новостей приходили каждый час.\n"
+        "Привет 🙂 Я бот для создания сводок новостей из Telegram каналов и чатов.\n\n"
+        "1️⃣Сначала добавьте каналы:\n"
+        "➖способ 1: просто перешлите сюда пост из канала\n"
+        "➖способ 2: нажмите на /add_channels, затем вставьте список каналов\n"
+        "Например: @channel1 https://t.me/channel2 channel3\n\n"
+        "2️⃣Нажмите на /receive_news, чтобы сводки новостей приходили каждый час.\n\n"
         "3️⃣Если хотите также получать сводку по чату, то его можно добавить только через /add_channels.\n\n"
         "Каналов и чатов можно добавлять сколько угодно и когда угодно ❤️\n\n"
         "👇Вот список всех команды:\n"
@@ -60,7 +61,6 @@ async def process_start_command(message: Message):
 @router.message(Command(commands="help"))
 async def process_help_command(message: Message):
     await message.answer(
-        "Я помогу вам создавать дайджесты из выбранных Telegram каналов.\n\n"
         "Доступные команды:\n"
         "/add_channels - добавить каналы\n"
         "/show_channels - показать список ваших каналов\n"
@@ -91,18 +91,20 @@ async def process_channels_input(message: Message, state: FSMContext):
     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
         await forwarded_message(message)
-        return
-
-    # Если это пересылка от юзера в чате, то пишем что это человек
-    if message.from_user and not message.text.startswith('/'):
-        await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
-                             "Перешлите пост из канала)\n\n"
-                             "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
+        await state.clear()
         return
 
     # Сбрасываем состояние если сообщение - команда
-    if message.text and message.text.startswith('/cancel'):
+    if message.text and message.text.startswith('/'):
         await message.answer(f"Вы отменили добавление каналов 👌")
+        await state.clear()
+        return
+
+    # Если это пересылка от юзера в чате, то пишем что это человек
+    if message.forward_from and message.from_user:
+        await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
+                             "Перешлите пост из канала)\n\n"
+                             "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
         await state.clear()
         return
 
@@ -120,6 +122,14 @@ async def process_channels_input(message: Message, state: FSMContext):
 
     if not new_channels:
         await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
+        return
+    
+    # Обрабатываем список каналов
+    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
+        await message.answer(
+            "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
+            "Пожалуйста, проверьте правильность написания и попробуйте снова."
+        )
         return
 
     try:
