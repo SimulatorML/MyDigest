@@ -66,7 +66,8 @@ class TelegramScraper:
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.summarizer = Summarization(api_key=MISTRAL_KEY)
 
-    async def get_entity(self, entity_name: str):
+    @staticmethod
+    async def get_entity(entity_name: str):
         """
                Retrieve a Telegram entity (such as a channel or user) by its name.
 
