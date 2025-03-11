@@ -167,10 +167,10 @@ class TelegramScraper:
             for channel in user_channels:
                 messages = await self.scrape_messages(channel["channel_name"], limit=100)
                 await telegram_sender.send_text(
-                    f"🐈✅ Посты с канала {channel['channel_name']}\nдля юзера {user_id} собранны")
+                    f"🐈 Посты с канала {channel['channel_name']}\nдля юзера {user_id} собранны")
                 
                 if not messages:
-                    await telegram_sender.send_text(f"🐈👎 нет сообщений на канале {channel['channel_name']}")
+                    await telegram_sender.send_text(f"🐈👎 для юзера {user_id} нет сообщений на канале {channel['channel_name']}")
                     continue
 
                 recent_messages = [
@@ -189,8 +189,9 @@ class TelegramScraper:
                         "message_id": msg["message_id"],
                         "channel_title": msg.get("channel_title", channel["channel_name"].lstrip("@"))
                     })
-                await telegram_sender.send_text(
-                        f"🐈✅ Посты для юзера {user_id} агрегированны")
+
+            await telegram_sender.send_text(
+                    f"🐈 Посты для юзера {user_id} агрегированны")
                 # await asyncio.sleep(3)
 
             if aggregated_news:
@@ -234,7 +235,7 @@ class TelegramScraper:
             logging.info("\n✅ Проверка завершена %s. Следующая через %s минут.\n",
                          datetime.now().strftime('%Y-%m-%d %H:%M:%S'), interval // 60)
             await telegram_sender.send_text(
-                f"🐈✅ Проверка завершена для пользователя {user_id}.\nСледующая через {interval // 60} мин")
+                f"🐈🔍✅ Проверка завершена для пользователя {user_id}.\nСледующая через {interval // 60} мин")
 
             await asyncio.sleep(interval)  # Ждем перед следующей проверкой
 
