@@ -97,14 +97,13 @@ async def process_channels_input(message: Message, state: FSMContext):
     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
         await forwarded_message(message)
-        await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил канал пересылкой")
         await state.clear()
         return
 
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
         await message.answer(f"Вы отменили добавление каналов 👌")
-        await telegram_sender.send_text(f"📄❌Юзер {user_id} отменил добавление каналов")
+        await telegram_sender.send_text(f"📄🙅‍♂️Юзер {user_id} отменил добавление каналов")
         await state.clear()
         return
 
@@ -113,7 +112,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
                              "Перешлите пост из канала)\n\n"
                              "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
-        await telegram_sender.send_text(f"📄❌Юзер {user_id} переслал сообщение от человека")
+        await telegram_sender.send_text(f"📄🤦‍♂️Юзер {user_id} переслал сообщение от человека")
         await state.clear()
         return
 
@@ -146,10 +145,10 @@ async def process_channels_input(message: Message, state: FSMContext):
         if success:
             channels_list = ', '.join(new_channels)
             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
-            await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил {len(list(channels_list))} каналов.")
+            await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил {len(new_channels)} каналов.")
         else:
             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
-            await telegram_sender.send_text(f"📄⚠️Произошла ошибка при добавлении каналов: user_id {user_id}\n{str(e)}")
+            await telegram_sender.send_text(f"📄⚠️success не получился при добавлении каналов: user_id {user_id}\n{str(e)}")
 
     except Exception as e:
         logging.error(f"Error adding channels for user {user_id}: {str(e)}")
@@ -307,6 +306,8 @@ async def receive_news_handler(message: Message):
         )
     except Exception as e:
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
+        await telegram_sender.send_text(
+            f"🔎⚠️Произошла ошибка при запуске проверки новостей: user_id {user_id}\n{str(e)}")
         logging.error("Error in receive_news_handler: %s", e)
 
 ############################## stop_news Остановить получение сводки новостей #################
@@ -319,6 +320,8 @@ async def stop_news_handler(message: Message):
         "Вы остановили получение новостей. "
         "Для повторного получения новостей, пожалуйста, вызовите /receive_news"
     )
+    await telegram_sender.send_text(
+        f"📄😭Юзер {user_id} остановил дайджест")
 
 ##############################  FORWARD: Добавить канал через пересылку #################
 
@@ -345,9 +348,12 @@ async def forwarded_message(message: Message):
 
     if success:
         await message.answer(f"Канал {channel} успешно добавлен! ✔️")
+        await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил канал пересылкой")
         await message.delete()
     else:
         await message.answer("Произошла ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
+        await telegram_sender.send_text(
+            f"📄⚠️ Произошла ошибка при добавлении канала пересылкой: user_id: {user_id}")
         await message.delete()
         return
 

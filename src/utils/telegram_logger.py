@@ -14,7 +14,7 @@ class TelegramSender:
         
         logging.info(f'Sending message to {channel_id}: {text}')
         
-        text = text + "\n" + datetime.now().isoformat()
+        text = "\n" + text + "\n\n" + str(datetime.now())
 
         r = requests.post(method, data={
             "chat_id": channel_id,
