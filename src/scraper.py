@@ -208,8 +208,9 @@ class TelegramScraper:
                 
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
-            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
             await telegram_sender.send_text(f"🐈❌Ошибка в check_new_messages: user_id {user_id};\n {str(e)}")
+            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+            
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
         """
@@ -225,7 +226,7 @@ class TelegramScraper:
         """
         logging.info("\n🔍 Запускаю фоновую проверку для пользователя %s (интервал %s мин)...\n", user_id, interval // 60)
         await telegram_sender.send_text(
-            f"🐈🔍 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...\n")
+            f"🐈🔍🚀 Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...\n")
 
         await self.db.cleanup_old_news()
 

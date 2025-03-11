@@ -56,6 +56,7 @@ async def process_start_command(message: Message):
     if not user_exists:
         await db.add_user(user_id, username, login_timestamp)
         await message.answer("Вы успешно зарегистрированы!")
+        await telegram_sender.send_text(f"❤️Юзер {user_id} зарегался")
 
     else:
         await message.answer("Вы уже зарегистрированы!")  
