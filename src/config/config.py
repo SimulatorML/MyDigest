@@ -1,9 +1,11 @@
 import os
 from dotenv import load_dotenv
-from pathlib import Path
 
 # Load environment variables
 load_dotenv()
+
+# Variables
+NEWS_CHECK_INTERVAL = 600  # интервал скрапинга в секундах
 
 # Telegram configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
