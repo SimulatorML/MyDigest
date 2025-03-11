@@ -1,5 +1,6 @@
 import requests
 import logging
+from datetime import datetime
 from src.config import GROUP_LOGS_ID, TELEGRAM_BOT_TOKEN
 
 class TelegramSender:
@@ -13,6 +14,8 @@ class TelegramSender:
         
         logging.info(f'Sending message to {channel_id}: {text}')
         
+        text = text + "\n" + datetime.now().isoformat()
+
         r = requests.post(method, data={
             "chat_id": channel_id,
             "text": text

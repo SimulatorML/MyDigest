@@ -13,9 +13,11 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
 from src.config import NEWS_CHECK_INTERVAL
+from src.utils.telegram_logger import TelegramSender
 
 router = Router()
 db = SupabaseDB(supabase)
+telegram_sender = TelegramSender()
 
 class UserStates(StatesGroup):
     waiting_for_channels = State()
@@ -95,12 +97,14 @@ async def process_channels_input(message: Message, state: FSMContext):
     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
         await forwarded_message(message)
+        await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил канал пересылкой")
         await state.clear()
         return
 
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
         await message.answer(f"Вы отменили добавление каналов 👌")
+        await telegram_sender.send_text(f"📄❌Юзер {user_id} отменил добавление каналов")
         await state.clear()
         return
 
@@ -109,6 +113,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
                              "Перешлите пост из канала)\n\n"
                              "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
+        await telegram_sender.send_text(f"📄❌Юзер {user_id} переслал сообщение от человека")
         await state.clear()
         return
 
@@ -141,12 +146,14 @@ async def process_channels_input(message: Message, state: FSMContext):
         if success:
             channels_list = ', '.join(new_channels)
             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
+            await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил {len(channels_list)} каналов.")
         else:
             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
 
     except Exception as e:
         logging.error(f"Error adding channels for user {user_id}: {str(e)}")
         await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
+        await telegram_sender.send_text(f"📄⚠️Произошла ошибка при добавлении каналов: user_id {user_id}\n{str(e)}")
 
     finally:
         await state.clear()
