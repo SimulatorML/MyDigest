@@ -12,7 +12,7 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
-from src.config import NEWS_CHECK_INTERVAL
+from src.config import NEWS_CHECK_INTERVAL, telegram_logger
 
 router = Router()
 db = SupabaseDB(supabase)
@@ -54,8 +54,10 @@ async def process_start_command(message: Message):
     if not user_exists:
         await db.add_user(user_id, username, login_timestamp)
         await message.answer("Вы успешно зарегистрированы!")
+        telegram_logger.info("❤️ Пришел новый юзер", user_id=user_id)
+
     else:
-        await message.answer("Вы уже зарегистрированы!")
+        await message.answer("Вы уже зарегистрированы!")  
 
 
 ############################## help - Показать справку #############################
