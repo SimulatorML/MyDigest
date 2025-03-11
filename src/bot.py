@@ -4,11 +4,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from src.commands import ALL_COMMANDS
 from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL
-# from src.config import telegram_logger
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client
-from src.config import telegram_sender
+from src.utils.telegram_logger import TelegramSender
 
 db = SupabaseDB(supabase)
 
@@ -22,7 +21,7 @@ class DigestBot:
         self.dp.include_router(channels_router)
 
         # Создаем экземпляр TelegramSender
-        self.telegram_sender = telegram_sender()
+        self.telegram_sender = TelegramSender()
 
     def start(self):
         """Start the bot"""

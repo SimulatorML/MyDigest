@@ -13,10 +13,11 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
 from src.config import NEWS_CHECK_INTERVAL
-from src.config import telegram_sender
+from src.utils.telegram_logger import TelegramSender
 
 router = Router()
 db = SupabaseDB(supabase)
+telegram_sender = TelegramSender()
 
 class UserStates(StatesGroup):
     waiting_for_channels = State()

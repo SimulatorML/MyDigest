@@ -9,8 +9,9 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
-from src.config import telegram_sender
+from src.utils.telegram_logger import TelegramSender
 
+telegram_sender = TelegramSender()
 
 TIME_RANGE_24H = timedelta(hours=24)
 DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
