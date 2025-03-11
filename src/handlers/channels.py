@@ -91,6 +91,9 @@ async def process_add_channels_command(message: Message, state: FSMContext):
 @router.message(UserStates.waiting_for_channels)
 async def process_channels_input(message: Message, state: FSMContext):
 
+    user_id = message.from_user.id
+    telegram_logger.info("Юзер захотел добавить каналы", user_id=user_id)
+
     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
         await forwarded_message(message)
@@ -112,7 +115,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         return
 
     # Получаем данные из сообщения
-    user_id = message.from_user.id
+    # user_id = message.from_user.id
     channels_text = message.text.strip()
     addition_timestamp = datetime.now().isoformat()
 
@@ -140,11 +143,18 @@ async def process_channels_input(message: Message, state: FSMContext):
         if success:
             channels_list = ', '.join(new_channels)
             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
+            telegram_logger.info(f"📄✅ {len(channels_list)} каналов добавлено ", user_id=user_id)
         else:
             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
+
     except Exception as e:
         logging.error(f"Error adding channels for user {user_id}: {str(e)}")
         await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
+        telegram_logger.error(
+            "📄❌Произошла ошибка при добавлении каналов\n",
+            user_id = user_id,
+            extra_info=f"Причина: {str(e)}\n"
+            )
     finally:
         await state.clear()
 
