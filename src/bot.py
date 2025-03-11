@@ -78,7 +78,7 @@ if __name__ == '__main__':
     logger = logging.getLogger(__name__)
 
     telegram_logger.info("==== Starting DigestBot ====")
-    
+
     # Create and start bot
     digest_bot = DigestBot()
     digest_bot.start()

@@ -1,7 +1,7 @@
 import datetime
-from telegram import Bot
-from telegram.error import TelegramError
+from aiogram import Bot
 import asyncio
+import logging
 
 class TelegramLogHandler:
     """
@@ -11,24 +11,31 @@ class TelegramLogHandler:
         self.token = token
         self.chat_id = chat_id
         self.bot = Bot(token=token)
-        self.loop = asyncio.get_event_loop()
-    
+        
     async def send_log_async(self, message):
         """Асинхронная отправка сообщения в Telegram группу"""
         try:
             await self.bot.send_message(chat_id=self.chat_id, text=message, parse_mode='HTML')
             return True
-        except TelegramError as e:
-            print(f"Failed to send log to Telegram: {e}")
+        except Exception as e:
+            logging.error(f"Failed to send log to Telegram: {e}")
             return False
     
     def send_log(self, message):
         """Синхронная обертка для отправки сообщения"""
+        # Создаем задачу на отправку сообщения вместо запуска нового цикла
         try:
-            return self.loop.run_until_complete(self.send_log_async(message))
+            # Проверяем, работает ли цикл событий
+            if asyncio.get_event_loop().is_running():
+                # Создаем задачу в текущем цикле
+                asyncio.create_task(self.send_log_async(message))
+            else:
+                # Если цикл событий не запущен, создаем новый для отправки сообщения
+                asyncio.run(self.send_log_async(message))
         except Exception as e:
-            print(f"Error in sending log: {e}")
+            logging.error(f"Error in sending log: {e}")
             return False
+        return True
 
     def _format_message(self, level_emoji, level_name, message, user_id=None, extra_info=None):
         """Форматирует сообщение лога с добавлением времени, user_id и дополнительной информации"""
