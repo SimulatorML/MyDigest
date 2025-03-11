@@ -3,10 +3,11 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from src.commands import ALL_COMMANDS
-from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL
+from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL, telegram_logger
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client
+from src.utils.log_decorators import log_async_execution
 
 db = SupabaseDB(supabase)
 
@@ -23,6 +24,7 @@ class DigestBot:
         """Start the bot"""
         asyncio.run(self._start_polling())
 
+    @log_async_execution(telegram_logger)
     async def _start_polling(self):
         self.dp.startup.register(self._on_startup)
         self.dp.shutdown.register(self._on_shutdown)
@@ -34,7 +36,7 @@ class DigestBot:
         finally:
             await self.bot.session.close()
 
-
+    @log_async_execution(telegram_logger)
     async def _on_startup(self, bot: Bot):
         """
         This is called when the bot starts up
@@ -54,8 +56,10 @@ class DigestBot:
                 task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
                 TelegramScraper.running_tasks[user_id] = task
 
-        logging.info("Bot started successfully and tasks re-launched for active users")
+        # logging.info("Bot started successfully and tasks re-launched for active users")
+        telegram_logger.success("Bot started successfully and tasks re-launched for active users")
 
+    @log_async_execution(telegram_logger)
     async def _on_shutdown(self, bot: Bot):
         logging.info("Bot is shutting down")
         await bot.session.close()
@@ -73,6 +77,8 @@ if __name__ == '__main__':
     )
     logger = logging.getLogger(__name__)
 
+    telegram_logger.info("==== Starting DigestBot ====")
+    
     # Create and start bot
     digest_bot = DigestBot()
     digest_bot.start()
