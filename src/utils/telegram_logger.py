@@ -1,78 +1,63 @@
-import datetime
-from aiogram import Bot
-import asyncio
 import logging
+import requests
+from typing import Optional
+from src.config.config import TELEGRAM_BOT_TOKEN, GROUP_LOGS_ID
 
-class TelegramLogHandler:
-    """
-    Класс для логирования сообщений в Telegram группу
-    """
-    def __init__(self, token, chat_id):
+class TelegramLogHandler(logging.Handler):
+    def __init__(self, token: str = TELEGRAM_BOT_TOKEN, chat_id: str = GROUP_LOGS_ID):
+        super().__init__()
         self.token = token
         self.chat_id = chat_id
-        self.bot = Bot(token=token)
-        
-    async def send_log_async(self, message):
-        """Асинхронная отправка сообщения в Telegram группу"""
-        try:
-            await self.bot.send_message(chat_id=self.chat_id, text=message, parse_mode='HTML')
-            return True
-        except Exception as e:
-            logging.error(f"Failed to send log to Telegram: {e}")
-            return False
-    
-    def send_log(self, message):
-        """Синхронная обертка для отправки сообщения"""
-        # Создаем задачу на отправку сообщения вместо запуска нового цикла
-        try:
-            # Проверяем, работает ли цикл событий
-            if asyncio.get_event_loop().is_running():
-                # Создаем задачу в текущем цикле
-                asyncio.create_task(self.send_log_async(message))
-            else:
-                # Если цикл событий не запущен, создаем новый для отправки сообщения
-                asyncio.run(self.send_log_async(message))
-        except Exception as e:
-            logging.error(f"Error in sending log: {e}")
-            return False
-        return True
+        self.base_url = f"https://api.telegram.org/bot{token}/sendMessage"
+        self.formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
 
-    def _format_message(self, level_emoji, level_name, message, user_id=None, extra_info=None):
-        """Форматирует сообщение лога с добавлением времени, user_id и дополнительной информации"""
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Базовое форматирование
-        log_message = f"{level_emoji} <b>{level_name}</b> [{now}]"
-        
-        # Добавляем user_id если он предоставлен
-        if user_id:
-            log_message += f" | <b>User ID:</b> {user_id}"
+    def send_message(self, text: str) -> Optional[requests.Response]:
+        try:
+            # Добавляем эмодзи в зависимости от уровня лога
+            level_emoji = {
+                logging.ERROR: "🔴",
+                logging.WARNING: "⚠️",
+                logging.INFO: "ℹ️",
+                logging.DEBUG: "🔍"
+            }.get(self.level, "📝")
             
-        # Добавляем основное сообщение
-        log_message += f"\n{message}"
-        
-        # Добавляем дополнительную информацию, если она есть
-        if extra_info:
-            log_message += f"\n<pre>{extra_info}</pre>"
+            formatted_text = f"{level_emoji} {text}"
             
-        return log_message
+            # Разбиваем длинные сообщения на части
+            max_length = 4000
+            messages = [formatted_text[i:i+max_length] 
+                      for i in range(0, len(formatted_text), max_length)]
+            
+            for msg in messages:
+                response = requests.post(
+                    self.base_url,
+                    data={
+                        "chat_id": self.chat_id,
+                        "text": msg,
+                        "parse_mode": "HTML"
+                    },
+                    timeout=10
+                )
+                
+                if response.status_code != 200:
+                    print(f"Failed to send log to Telegram. Status code: {response.status_code}")
+                    print(f"Error details: {response.text}")
+                    print(f"Chat ID: {self.chat_id}")
+                    return None
+                
+                return response
+                
+        except Exception as e:
+            print(f"Error sending log to Telegram: {str(e)}")
+            print(f"Chat ID: {self.chat_id}")
+            return None
 
-    def info(self, message, user_id=None, extra_info=None):
-        """Отправка информационного сообщения"""
-        log_message = self._format_message("ℹ️", "INFO", message, user_id, extra_info)
-        self.send_log(log_message)
-    
-    def error(self, message, user_id=None, extra_info=None):
-        """Отправка сообщения об ошибке"""
-        log_message = self._format_message("❌", "ERROR", message, user_id, extra_info)
-        self.send_log(log_message)
-    
-    def success(self, message, user_id=None, extra_info=None):
-        """Отправка сообщения об успешной операции"""
-        log_message = self._format_message("✅", "SUCCESS", message, user_id, extra_info)
-        self.send_log(log_message)
-    
-    def warning(self, message, user_id=None, extra_info=None):
-        """Отправка предупреждения"""
-        log_message = self._format_message("⚠️", "WARNING", message, user_id, extra_info)
-        self.send_log(log_message)
+    def emit(self, record):
+        try:
+            msg = self.formatter.format(record)
+            self.level = record.levelno
+            self.send_message(msg)
+        except Exception as e:
+            print(f"Error in log handler: {e}")
