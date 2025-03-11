@@ -8,7 +8,7 @@ class TelegramSender:
         self.url = f"https://api.telegram.org/bot{self.token}"
 
     # Функция для отправки сообщения с текстом text
-    def send_text(self, text: str, channel_id = GROUP_LOGS_ID):
+    async def send_text(self, text: str, channel_id = GROUP_LOGS_ID):
         method = f"{self.url}/sendMessage"
         
         logging.info(f'Sending message to {channel_id}: {text}')

@@ -53,7 +53,7 @@ class DigestBot:
         await bot.set_my_commands(ALL_COMMANDS)
         logging.info("Bot started successfully")
         # Отправляем уведомление в Telegram группу
-        self.telegram_sender.send_text("🚀Бот успешно запущен!")
+        await self.telegram_sender.send_text("🚀Бот успешно запущен!")
 
         await init_telethon_client()
         if active_users:
@@ -63,15 +63,15 @@ class DigestBot:
                     scraper = TelegramScraper(user_id)
                     task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
                     TelegramScraper.running_tasks[user_id] = task
-                    self.telegram_sender.send_text(f"Задача для 🧍{user_id} запущена")
+                    await self.telegram_sender.send_text(f"Задача для 🧍{user_id} запущена")
 
             except Exception as e:
-                self.telegram_sender.send_text(f"⚠️🚫Задача сломалась на 🧍{user_id}: {str(e)}")
+                await self.telegram_sender.send_text(f"⚠️🚫Задача сломалась на 🧍{user_id}: {str(e)}")
 
 
     async def _on_shutdown(self, bot: Bot):
         logging.info("Bot is shutting down")
-        self.telegram_sender.send_text(f"Бот остановлен⛔️")
+        await self.telegram_sender.send_text(f"Бот остановлен⛔️")
         await bot.session.close()
 
 
