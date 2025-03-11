@@ -3,15 +3,16 @@ import re
 import logging
 from datetime import datetime
 from aiogram import Router
-from aiogram.filters import Command, CommandStart, StateFilter
+from aiogram.filters import Command, CommandStart
 from aiogram import F
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup, default_state
+from aiogram.fsm.state import State, StatesGroup
 from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
+from src.config import NEWS_CHECK_INTERVAL
 
 router = Router()
 db = SupabaseDB(supabase)
@@ -271,8 +272,6 @@ async def process_clear_cancel(callback: CallbackQuery):
 
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
-    interval = 600  # modifiable
-    divider = 60    # modifiable
 
     user_id = message.from_user.id
     #Marking the user in the db who is CURRENTLY using the bot
@@ -286,12 +285,12 @@ async def receive_news_handler(message: Message):
         if scraper.stop_auto_news_check(user_id):
             await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
-        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
+        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
         TelegramScraper.running_tasks[user_id] = task
 
         await message.answer(
             f"✅ Фоновая проверка новостей запущена. "
-            f"Вы будете получать обновления каждые {interval // divider} минут."
+            f"Вы будете получать обновления каждые {NEWS_CHECK_INTERVAL // 60} минут."
         )
     except Exception as e:
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")

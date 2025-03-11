@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from src.commands import ALL_COMMANDS
-from src.config import TELEGRAM_BOT_TOKEN
+from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client
@@ -51,7 +51,7 @@ class DigestBot:
             for user in active_users.data:
                 user_id = user["user_id"]
                 scraper = TelegramScraper(user_id)
-                task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=600))
+                task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
                 TelegramScraper.running_tasks[user_id] = task
 
         logging.info("Bot started successfully and tasks re-launched for active users")
