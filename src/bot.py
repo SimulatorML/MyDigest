@@ -8,7 +8,7 @@ from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client
-from src.utils.telegram_logger import TelegramSender
+from src.config import telegram_sender
 
 db = SupabaseDB(supabase)
 
@@ -22,7 +22,7 @@ class DigestBot:
         self.dp.include_router(channels_router)
 
         # Создаем экземпляр TelegramSender
-        self.telegram_sender = TelegramSender()
+        self.telegram_sender = telegram_sender()
 
     def start(self):
         """Start the bot"""

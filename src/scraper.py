@@ -9,6 +9,8 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
+from src.config import telegram_sender
+
 
 TIME_RANGE_24H = timedelta(hours=24)
 DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
@@ -84,6 +86,7 @@ class TelegramScraper:
             return entity
         except Exception as e:
             logging.error("Error getting entity %s: %s", entity_name, e)
+            await telegram_sender.send_text(f"❌ get_entity: entity_name {entity_name};\n {str(e)}")
             return None
 
     async def scrape_messages(self, entity_name: str, limit: int = 1000) -> List[Dict[str, Union[int, str, datetime]]]:
@@ -132,6 +135,7 @@ class TelegramScraper:
                 await asyncio.sleep(e.seconds)
             except Exception as e:
                 logging.error("Failed to scrape messages: %s", e)
+                await telegram_sender.send_text(f"❌scrape_messages: channel_title {channel_title};\n {str(e)}")
                 break
         return messages
 
@@ -192,6 +196,7 @@ class TelegramScraper:
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
             await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+            await telegram_sender.send_text(f"❌check_new_messages: user_id {user_id};\n {str(e)}")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
         """
@@ -206,6 +211,8 @@ class TelegramScraper:
         :raises: Exception if the background task fails to start.
         """
         logging.info("\n🔍 Запускаю фоновую проверку для пользователя %s (интервал %s мин)...\n", user_id, interval // 60)
+        await telegram_sender.send_text(
+            f"Запускаю фоновую проверку для пользователя {user_id} (интервал {interval // 60} мин)...\n")
 
         await self.db.cleanup_old_news()
 
@@ -214,6 +221,8 @@ class TelegramScraper:
             await self.check_new_messages(user_id, time_range=DEFAULT_TIME_RANGE_HOURS)  # Проверяем новые сообщения за последний час
             logging.info("\n✅ Проверка завершена %s. Следующая через %s минут.\n",
                          datetime.now().strftime('%Y-%m-%d %H:%M:%S'), interval // 60)
+            await telegram_sender.send_text(
+                f"✅ Проверка завершена для пользователя {user_id}.\nСледующая через {interval // 60} мин")
 
             await asyncio.sleep(interval)  # Ждем перед следующей проверкой
 

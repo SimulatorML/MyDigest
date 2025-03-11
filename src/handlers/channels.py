@@ -13,11 +13,10 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
 from src.config import NEWS_CHECK_INTERVAL
-from src.utils.telegram_logger import TelegramSender
+from src.config import telegram_sender
 
 router = Router()
 db = SupabaseDB(supabase)
-telegram_sender = TelegramSender()
 
 class UserStates(StatesGroup):
     waiting_for_channels = State()
@@ -146,9 +145,10 @@ async def process_channels_input(message: Message, state: FSMContext):
         if success:
             channels_list = ', '.join(new_channels)
             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
-            await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил {len(channels_list)} каналов.")
+            await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил {len(list(channels_list))} каналов.")
         else:
             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
+            await telegram_sender.send_text(f"📄⚠️Произошла ошибка при добавлении каналов: user_id {user_id}\n{str(e)}")
 
     except Exception as e:
         logging.error(f"Error adding channels for user {user_id}: {str(e)}")
