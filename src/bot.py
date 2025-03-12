@@ -36,8 +36,9 @@ class DigestBot:
             logging.error("Error during bot startup: %s", e)
             raise
         finally:
-            await telegram_sender.send_text(f"finally: self.bot.session.close()")
             await self.bot.session.close()
+            await telegram_sender.send_text(f"finally: сессия закрылась из-за ошибки ⛔️")
+            logging.info("session closed due to error ⛔️")
 
     async def _on_startup(self, bot: Bot):
         """
