@@ -5,7 +5,7 @@ from typing import List, Dict, Union
 
 class Summarization:
     def __init__(self, api_key: str, model: str = "mistral-large-latest") -> None:
-        self.client = Mistral(api_key=api_key)
+        self.api_key = api_key
         self.model = model
 
     async def summarize_news_items(self, news: List[Dict[str, Union[str, int]]]) -> str:
@@ -38,11 +38,11 @@ class Summarization:
         )
 
         try:
-            response = await asyncio.to_thread(
-                self.client.chat.complete,
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}]
-            )
+            async with Mistral(api_key=self.api_key) as client:
+                response = await client.chat.complete_async(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}]
+                )
             return response.choices[0].message.content
         except Exception as e:
             logging.error("Ошибка генерации дайджеста: %s", e)
@@ -66,14 +66,16 @@ class Summarization:
                 Each topic should be introduced with a one relevant emoji. Emoji should only be placed in front of topic.
                 Ensure the topics are broad and general; limit the number of topics to 5.
                 Do not include bullet points, numbering, or other list formats. Keep it clean and structured as requested.
-                Summaries text: \n{summaries_text}. '''
+                Summaries text: \n{summaries_text}. 
+                Make sure that the resulting output does not exceed 4000 characters.'''
         )
 
         try:
-            response = self.client.chat.complete(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}]
-            )
+            async with Mistral(api_key=self.api_key) as client:
+                response = await client.chat.complete_async(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}]
+                )
             return response.choices[0].message.content
         except Exception as e:
             logging.error("Error during clustering: %s", e)

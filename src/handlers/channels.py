@@ -11,7 +11,7 @@ from aiogram.fsm.state import State, StatesGroup
 from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
-from src.scraper import init_telethon_client
+from src.scraper import init_telethon_client, close_telethon_client
 from src.config import NEWS_CHECK_INTERVAL
 
 router = Router()
@@ -301,7 +301,9 @@ async def receive_news_handler(message: Message):
 async def stop_news_handler(message: Message):
 
     user_id = message.from_user.id
+    scraper = TelegramScraper(user_id)
     await db.set_user_receiving_news(user_id, False)
+    scraper.stop_auto_news_check(user_id)
     await message.answer(
         "Вы остановили получение новостей. "
         "Для повторного получения новостей, пожалуйста, вызовите /receive_news"

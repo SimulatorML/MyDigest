@@ -6,7 +6,7 @@ from src.commands import ALL_COMMANDS
 from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
-from src.scraper import TelegramScraper, init_telethon_client
+from src.scraper import TelegramScraper, init_telethon_client, close_telethon_client
 
 db = SupabaseDB(supabase)
 
@@ -58,6 +58,7 @@ class DigestBot:
 
     async def _on_shutdown(self, bot: Bot):
         logging.info("Bot is shutting down")
+        await close_telethon_client()
         await bot.session.close()
 
 

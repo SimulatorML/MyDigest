@@ -55,6 +55,13 @@ async def init_telethon_client() -> TelegramClient:
         _telethon_client = client
         return _telethon_client
 
+async def close_telethon_client():
+    """Function to close telethon when the bot is shutting down"""
+    global _telethon_client
+    if _telethon_client and _telethon_client.is_connected():
+        await _telethon_client.disconnect()
+        _telethon_client = None
+
 class TelegramScraper:
     running_tasks = {}
 
@@ -178,7 +185,7 @@ class TelegramScraper:
                         "message_id": msg["message_id"],
                         "channel_title": msg.get("channel_title", channel["channel_name"].lstrip("@"))
                     })
-                # await asyncio.sleep(3)
+                await asyncio.sleep(1)
 
             if aggregated_news:
                 summaries = await self.summarizer.summarize_news_items(aggregated_news)
