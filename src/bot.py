@@ -10,6 +10,7 @@ from src.scraper import TelegramScraper, init_telethon_client
 from src.utils.telegram_logger import TelegramSender
 
 db = SupabaseDB(supabase)
+telegram_sender = TelegramSender()
 
 class DigestBot:
     def __init__(self):
@@ -19,9 +20,6 @@ class DigestBot:
 
         # Register routers
         self.dp.include_router(channels_router)
-
-        # Создаем экземпляр TelegramSender
-        self.telegram_sender = TelegramSender()
 
     def start(self):
         """Start the bot"""
@@ -34,11 +32,11 @@ class DigestBot:
             await self.dp.start_polling(self.bot)
         except Exception as e:
             # Логирование ошибки в Telegram
-            self.telegram_sender.send_text(f"Ошибка при запуске бота: {str(e)}")
+            await telegram_sender.send_text(f"Ошибка при запуске бота: {str(e)}")
             logging.error("Error during bot startup: %s", e)
             raise
         finally:
-            self.telegram_sender.send_text(f"finally: self.bot.session.close()")
+            await telegram_sender.send_text(f"finally: self.bot.session.close()")
             await self.bot.session.close()
 
     async def _on_startup(self, bot: Bot):
@@ -53,7 +51,7 @@ class DigestBot:
         await bot.set_my_commands(ALL_COMMANDS)
         logging.info("Bot started successfully")
         # Отправляем уведомление в Telegram группу
-        await self.telegram_sender.send_text("🚀Бот успешно запущен!")
+        await telegram_sender.send_text("🚀Бот успешно запущен!")
 
         await init_telethon_client()
         if active_users:
@@ -63,15 +61,15 @@ class DigestBot:
                     scraper = TelegramScraper(user_id)
                     task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
                     TelegramScraper.running_tasks[user_id] = task
-                    await self.telegram_sender.send_text(f"Задача для 🧍{user_id} запущена")
+                    await telegram_sender.send_text(f"Задача для 🧍{user_id} запущена")
 
             except Exception as e:
-                await self.telegram_sender.send_text(f"⚠️🚫Задача сломалась на 🧍{user_id}: {str(e)}")
+                await telegram_sender.send_text(f"⚠️🚫Задача сломалась на 🧍{user_id}: {str(e)}")
 
 
     async def _on_shutdown(self, bot: Bot):
         logging.info("Bot is shutting down")
-        await self.telegram_sender.send_text(f"Бот остановлен⛔️")
+        await telegram_sender.send_text(f"Бот остановлен⛔️")
         await bot.session.close()
 
 
