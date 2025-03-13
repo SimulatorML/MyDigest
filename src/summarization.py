@@ -2,6 +2,9 @@ import logging
 import asyncio
 from mistralai import Mistral
 from typing import List, Dict, Union
+from src.utils.telegram_logger import TelegramSender
+
+telegram_sender = TelegramSender()
 
 class Summarization:
     def __init__(self, api_key: str, model: str = "mistral-large-latest") -> None:
@@ -46,6 +49,7 @@ class Summarization:
             return response.choices[0].message.content
         except Exception as e:
             logging.error("Ошибка генерации дайджеста: %s", e)
+            await telegram_sender.send_text(f"⚠️ Ошибка генерации дайджеста summarize_news_items:\n\n{str(e)}")
             return "Failed to generate the summary."
 
     async def cluster_summaries(self, summaries_text: str) -> str:
@@ -79,4 +83,5 @@ class Summarization:
             return response.choices[0].message.content
         except Exception as e:
             logging.error("Error during clustering: %s", e)
+            await telegram_sender.send_text(f"⚠️ Ошибка cluster_summaries:\n\n{str(e)}")
             return "Failed to produce the final digest."

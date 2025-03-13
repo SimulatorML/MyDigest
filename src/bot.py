@@ -7,8 +7,10 @@ from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client, close_telethon_client
+from src.utils.telegram_logger import TelegramSender
 
 db = SupabaseDB(supabase)
+telegram_sender = TelegramSender()
 
 class DigestBot:
     def __init__(self):
@@ -29,11 +31,14 @@ class DigestBot:
         try:
             await self.dp.start_polling(self.bot)
         except Exception as e:
+            # Логирование ошибки в Telegram
+            await telegram_sender.send_text(f"Ошибка при запуске бота: {str(e)}")
             logging.error("Error during bot startup: %s", e)
             raise
         finally:
             await self.bot.session.close()
-
+            await telegram_sender.send_text(f"finally: сессия закрылась из-за ошибки ⛔️")
+            logging.info("session closed due to error ⛔️")
 
     async def _on_startup(self, bot: Bot):
         """
@@ -41,23 +46,31 @@ class DigestBot:
         When the bot starts up, it retrieves users who are currently receiving news.
         It automatically starts the scraper once the bot is relaunched.
         """
+
         active_users = await db.retrieve_current_users()
         await bot.delete_my_commands()
         await bot.set_my_commands(ALL_COMMANDS)
         logging.info("Bot started successfully")
+        # Отправляем уведомление в Telegram группу
+        await telegram_sender.send_text("🚀Бот успешно запущен!")
 
         await init_telethon_client()
         if active_users:
-            for user in active_users.data:
-                user_id = user["user_id"]
-                scraper = TelegramScraper(user_id)
-                task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
-                TelegramScraper.running_tasks[user_id] = task
+            try:
+                for user in active_users.data:
+                    user_id = user["user_id"]
+                    scraper = TelegramScraper(user_id)
+                    task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
+                    TelegramScraper.running_tasks[user_id] = task
+                    await telegram_sender.send_text(f"Задача для 🧍{user_id} запущена")
 
-        logging.info("Bot started successfully and tasks re-launched for active users")
+            except Exception as e:
+                await telegram_sender.send_text(f"⚠️🚫Задача сломалась на 🧍{user_id}: {str(e)}")
+
 
     async def _on_shutdown(self, bot: Bot):
         logging.info("Bot is shutting down")
+        await telegram_sender.send_text(f"Бот остановлен⛔️")
         await close_telethon_client()
         await bot.session.close()
 

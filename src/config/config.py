@@ -14,7 +14,7 @@ API_HASH = os.getenv("TELEGRAM_API_HASH")
 PHONE_NUMBER = os.getenv('TELEGRAM_PHONE_NUMBER')
 
 # Group for logs
-# GROUP_LOGS_ID = os.getenv('GROUP_LOGS_ID')
+GROUP_LOGS_ID = os.getenv('GROUP_LOGS_ID')
 
 # Supabase configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -22,3 +22,6 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
 # LLM configuration
 MISTRAL_KEY = os.getenv('MISTRAL_KEY')
+
+
+## Глобальные экземпляры
