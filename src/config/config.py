@@ -16,6 +16,11 @@ PHONE_NUMBER = os.getenv('TELEGRAM_PHONE_NUMBER')
 # Group for logs
 GROUP_LOGS_ID = os.getenv('GROUP_LOGS_ID')
 
+# For telegram logging
+TURN_TG_LOGGER = os.getenv("TURN_TG_LOGGER", "False").lower() == "true"
+TITLE_TG_LOGGER = os.getenv('TITLE_TG_LOGGER')
+
+
 # Supabase configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
@@ -23,5 +28,3 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 # LLM configuration
 MISTRAL_KEY = os.getenv('MISTRAL_KEY')
 
-
-## Глобальные экземпляры

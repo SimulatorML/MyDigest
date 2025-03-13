@@ -1,10 +1,8 @@
 import logging
-import asyncio
 from mistralai import Mistral
 from typing import List, Dict, Union
-from src.utils.telegram_logger import TelegramSender
+from src.utils.telegram_logger import telegram_sender
 
-telegram_sender = TelegramSender()
 
 class Summarization:
     def __init__(self, api_key: str, model: str = "mistral-large-latest") -> None:
