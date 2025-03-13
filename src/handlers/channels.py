@@ -11,26 +11,27 @@ from aiogram.fsm.state import State, StatesGroup
 from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
-from src.scraper import init_telethon_client
-
+from src.scraper import init_telethon_client, close_telethon_client
+from src.config import NEWS_CHECK_INTERVAL
 
 router = Router()
 db = SupabaseDB(supabase)
-
 
 class UserStates(StatesGroup):
     waiting_for_channels = State()
     waiting_for_delete = State()
 
-
 ############################## Приветствие ###############################
 @router.message(CommandStart())
 async def process_start_command(message: Message):
     sent_message = await message.answer(
-        "Привет 🙂 Я бот для создания дайджестов из Telegram каналов и чатов.\n\n"
-        "1️⃣Сначала добавь каналы: перешли сюда сообщение из канала, либо нажми на /add_channels.\n"
-        "2️⃣Нажми на /receive_news, чтобы получать сводки новостей каждый час.\n"
-        "3️⃣Если хочешь также получать сводку по чату, то его можно добавить только через /add_channels.\n\n"
+        "Привет 🙂 Я бот для создания сводок новостей из Telegram каналов и чатов.\n\n"
+        "1️⃣Сначала добавьте каналы:\n"
+        "➖способ 1: просто перешлите сюда пост из канала\n"
+        "➖способ 2: нажмите на /add_channels, затем вставьте список каналов\n"
+        "Например: @channel1 https://t.me/channel2 channel3\n\n"
+        "2️⃣Нажмите на /receive_news, чтобы сводки новостей приходили каждый час.\n\n"
+        "3️⃣Если хотите также получать сводку по чату, то его можно добавить только через /add_channels.\n\n"
         "Каналов и чатов можно добавлять сколько угодно и когда угодно ❤️\n\n"
         "👇Вот список всех команды:\n"
         "/add_channels - добавить каналы\n"
@@ -56,11 +57,11 @@ async def process_start_command(message: Message):
     else:
         await message.answer("Вы уже зарегистрированы!")
 
+
 ############################## help - Показать справку #############################
 @router.message(Command(commands="help"))
 async def process_help_command(message: Message):
     await message.answer(
-        "Я помогу вам создавать дайджесты из выбранных Telegram каналов.\n\n"
         "Доступные команды:\n"
         "/add_channels - добавить каналы\n"
         "/show_channels - показать список ваших каналов\n"
@@ -84,14 +85,27 @@ async def process_add_channels_command(message: Message, state: FSMContext):
     # Устанавливаем состояние ожидания ввода каналов
     await state.set_state(UserStates.waiting_for_channels)
 
-
 ### Обработчик для получения списка каналов
 @router.message(UserStates.waiting_for_channels)
 async def process_channels_input(message: Message, state: FSMContext):
 
+    # Если это пересылка поста из группы, то добавляем как forwarded сообщение
+    if message.forward_from_chat and message.forward_from_chat.type == 'channel':
+        await forwarded_message(message)
+        await state.clear()
+        return
+
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
         await message.answer(f"Вы отменили добавление каналов 👌")
+        await state.clear()
+        return
+
+    # Если это пересылка от юзера в чате, то пишем что это человек
+    if message.forward_from and message.from_user:
+        await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
+                             "Перешлите пост из канала)\n\n"
+                             "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
         await state.clear()
         return
 
@@ -103,12 +117,20 @@ async def process_channels_input(message: Message, state: FSMContext):
     if not channels_text:
         await message.answer("Пожалуйста, отправьте корректный список каналов.")
         return
-    
+
     # Обрабатываем список каналов
     new_channels = process_channel_list(channels_text)
 
     if not new_channels:
         await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
+        return
+    
+    # Обрабатываем список каналов
+    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
+        await message.answer(
+            "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
+            "Пожалуйста, проверьте правильность написания и попробуйте снова."
+        )
         return
 
     try:
@@ -124,7 +146,6 @@ async def process_channels_input(message: Message, state: FSMContext):
     finally:
         await state.clear()
 
-
 ############################## show_channels - Показать каналы #####################
 
 @router.message(Command(commands="show_channels"))
@@ -137,7 +158,6 @@ async def process_show_channels_command(message: Message):
         await message.answer(f"Ваши каналы:\n{', '.join(channel_names)}")
     else:
         await message.answer("У вас пока нет добавленных каналов.")
-
 
 ############################## delete_channels - Удалить каналы #################
 
@@ -198,7 +218,6 @@ async def process_delete_channels(message: Message, state: FSMContext):
     # Сбрасываем состояние
     await state.clear()
 
-
 ############################## clear_channels - Очистить каналы #################
 
 @router.message(Command(commands="clear_channels"))
@@ -249,15 +268,14 @@ async def process_clear_cancel(callback: CallbackQuery):
         "Операция отменена. Ваши каналы остались без изменений."
     )
 
-
 ############################## receive_news - Получить сводки новостей ############
 
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message):
-    interval = 600  # modifiable
-    divider = 60    # modifiable
 
     user_id = message.from_user.id
+    #Marking the user in the db who is CURRENTLY using the bot
+    await db.set_user_receiving_news(user_id, True)
     scraper = TelegramScraper(user_id)
 
     try:
@@ -267,21 +285,38 @@ async def receive_news_handler(message: Message):
         if scraper.stop_auto_news_check(user_id):
             await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
-        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
+        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
         TelegramScraper.running_tasks[user_id] = task
 
         await message.answer(
             f"✅ Фоновая проверка новостей запущена. "
-            f"Вы будете получать обновления каждые {interval // divider} минут."
+            f"Вы будете получать обновления каждые {NEWS_CHECK_INTERVAL // 60} минут."
         )
     except Exception as e:
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
         logging.error("Error in receive_news_handler: %s", e)
 
+############################## stop_news Остановить получение сводки новостей #################
+@router.message(Command("stop_news"))
+async def stop_news_handler(message: Message):
+
+    user_id = message.from_user.id
+    scraper = TelegramScraper(user_id)
+    await db.set_user_receiving_news(user_id, False)
+    scraper.stop_auto_news_check(user_id)
+    await message.answer(
+        "Вы остановили получение новостей. "
+        "Для повторного получения новостей, пожалуйста, вызовите /receive_news"
+    )
+
 ##############################  FORWARD: Добавить канал через пересылку #################
 
 @router.message(lambda message: message.forward_from_chat and message.forward_from_chat.type == 'channel')
 async def handle_forwarded_message(message: Message):
+    await forwarded_message(message)
+
+# Функция для обработки пересылки
+async def forwarded_message(message: Message):
     
     user_id = message.from_user.id
     addition_timestamp = datetime.now().isoformat()
@@ -305,19 +340,30 @@ async def handle_forwarded_message(message: Message):
         await message.delete()
         return
 
-############################## Прием сообщений или неверных команд #############################
+############################## Перехват обычного текста #############################
 
+# Для всех остальных сообщений
 @router.message()
 async def process_other_messages(message: Message):
     # Если без причины нажать на /cancel
     if message.text == "/cancel":
         await message.answer("Нечего отменять 🤷‍♂️")
         return
-    # Если неизвестная команды или текст или пересылка из лички
-    await message.answer(
-        "Я понимаю только команды. Используйте /help, "
-        "чтобы увидеть список доступных команд или нажмите на Меню."
-    )
+
+    if message.forward_from:
+        await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
+                             "Перешлите пост из канала)\n\n"
+                             "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
+        return
+    
+        # Если юзер сел попой на телефон
+    if  message.text and not message.text.startswith('/'):
+        # Если неизвестная команды или текст или пересылка из лички
+        await message.answer(
+            "Я понимаю только команды. Используйте /help, "
+            "чтобы увидеть список доступных команд или нажмите на Меню."
+        )
+        return
 
 
 ############################## Функция обработки списка каналов #############################
@@ -359,6 +405,3 @@ def process_channel_list(channels_text: str) -> set[str]:
             continue
             
     return processed_channels
-
-
-

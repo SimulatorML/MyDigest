@@ -13,7 +13,8 @@ CHANNEL_COMMANDS = [
 # Команды для работы с дайджестами
 DIGEST_COMMANDS = [
 
-    BotCommand(command="receive_news", description="Получить новые сообщения")
+    BotCommand(command="receive_news", description="Получить новые сообщения"),
+    BotCommand(command="stop_news", description="Остановить сообщения"),
 ]
 
 # Общие команды

@@ -16,7 +16,6 @@ DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
 _telethon_client: TelegramClient | None = None
 _telethon_init_lock = asyncio.Lock()
 
-
 async def init_telethon_client() -> TelegramClient:
     """
     Создает\возвращает уже созданный Telethon-клиент.
@@ -56,6 +55,12 @@ async def init_telethon_client() -> TelegramClient:
         _telethon_client = client
         return _telethon_client
 
+async def close_telethon_client():
+    """Function to close telethon when the bot is shutting down"""
+    global _telethon_client
+    if _telethon_client and _telethon_client.is_connected():
+        await _telethon_client.disconnect()
+        _telethon_client = None
 
 class TelegramScraper:
     running_tasks = {}
@@ -66,7 +71,8 @@ class TelegramScraper:
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.summarizer = Summarization(api_key=MISTRAL_KEY)
 
-    async def get_entity(self, entity_name: str):
+    @staticmethod
+    async def get_entity(entity_name: str):
         """
                Retrieve a Telegram entity (such as a channel or user) by its name.
 
@@ -179,16 +185,17 @@ class TelegramScraper:
                         "message_id": msg["message_id"],
                         "channel_title": msg.get("channel_title", channel["channel_name"].lstrip("@"))
                     })
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
 
             if aggregated_news:
-                summaries = self.summarizer.summarize_news_items(aggregated_news)
-                digest = self.summarizer.cluster_summaries(summaries)
+                summaries = await self.summarizer.summarize_news_items(aggregated_news)
+                digest = await self.summarizer.cluster_summaries(summaries)
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
                 await self.bot.send_message(user_id,
                                             f"📢 <b> Ваш дайджест за последний час: </b>\n\n{digest}",
-                                            parse_mode="HTML")
+                                            parse_mode="HTML",
+                                            disable_web_page_preview=True)
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
             await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
@@ -217,19 +224,20 @@ class TelegramScraper:
 
             await asyncio.sleep(interval)  # Ждем перед следующей проверкой
 
-    def stop_auto_news_check(self, user_id: int):
-        """
-        Stop the background task checking for new messages for the specified user.
+    @staticmethod
+    def stop_auto_news_check(user_id: int):
+            """
+            Stop the background task checking for new messages for the specified user.
 
-        This method cancels the background task associated with the user, effectively stopping
-        further periodic message checks and digest updates.
+            This method cancels the background task associated with the user, effectively stopping
+            further periodic message checks and digest updates.
 
-        :param user_id: The unique identifier of the user.
-        :return: True if the background task was successfully stopped, otherwise False.
-        :raises: Exception if stopping the task fails.
-        """
-        if user_id in TelegramScraper.running_tasks:
-            TelegramScraper.running_tasks[user_id].cancel()
-            del TelegramScraper.running_tasks[user_id]
-            return True
-        return False
+            :param user_id: The unique identifier of the user.
+            :return: True if the background task was successfully stopped, otherwise False.
+            :raises: Exception if stopping the task fails.
+            """
+            if user_id in TelegramScraper.running_tasks:
+                TelegramScraper.running_tasks[user_id].cancel()
+                del TelegramScraper.running_tasks[user_id]
+                return True
+            return False
