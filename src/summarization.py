@@ -80,3 +80,41 @@ class Summarization:
         except Exception as e:
             logging.error("Error during clustering: %s", e)
             return "Failed to produce the final digest."
+
+    async def determine_channel_topic(self, messages: List[Dict[str, Union[str, int]]]) -> str:
+        """
+        Determines channel topics based on recent posts.
+
+        :param messages: List of dictionaries with keys:
+            {
+              'channel': channel name (without the '@'),
+              'message': text of the news,
+              'message_id': id of the message
+            }
+        :returns: A string with the determined channel topic.
+        """
+        if not messages:
+            return "Общая тематика"
+
+        prompt = (
+            f'''Analyze the list of the channel's latest messages: {messages}.
+                Determine the main topic of the channel and return it as a brief, specific, and clear formulation.
+                The topic should consist of a maximum of three words (you can use commas or conjunctions if necessary).
+                The topic should be primarily in Russian.
+                If the messages contain special terms like "AI", "IT", "ML" or foreign brand/company names, keep them in their original form if they are part of the final topic of the channel.
+                Do not enclose the topic in quotes.
+                Do not add any explanations or reasoning.
+                The topic should not start with phrases like "The main topic of the channel" or "Based on the provided messages".
+                Just return the topic in its pure form.'''
+        )
+
+        try:
+            async with Mistral(api_key=self.api_key) as client:
+                response = await client.chat.complete_async(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+            return response.choices[0].message.content
+        except Exception as e:
+            logging.error("Error determining channel topic: %s", e)
+            return "Failed to determine channel topic."
