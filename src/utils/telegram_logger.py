@@ -43,7 +43,7 @@ class TelegramSender:
                     }
                 )
                 response.raise_for_status()  # Проверка статуса 4xx/5xx
-            await asyncio.sleep(0.6) # задержка перед отправкой чтобы не спамить
+            await asyncio.sleep(1.1) # задержка перед отправкой чтобы не спамить
 
         except httpx.HTTPStatusError as e:
             logging.error(f"Ошибка Telegram API: {e.response.status_code} - {e.response.text}")
