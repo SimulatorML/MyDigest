@@ -30,12 +30,12 @@ class TelegramSender:
         full_text = (
             f"{self.title}\n"
             f"{text}\n\n"
-            f"{datetime.now()}"
+            f"{datetime.now()}"   
         )
 
         try:
-            
             async with httpx.AsyncClient(timeout=5) as client:  # Таймаут 5 сек если долго не будет отвечать
+                await asyncio.sleep(0.6)
                 response = await client.post(
                     f"{self.url}/sendMessage",
                     json={
@@ -44,17 +44,20 @@ class TelegramSender:
                     }
                 )
                 response.raise_for_status()  # Проверка статуса 4xx/5xx
-            await asyncio.sleep(1.1) # задержка перед отправкой чтобы не спамить
 
         except httpx.HTTPStatusError as e:
-            logging.error(f"Ошибка Telegram API: {e.response.status_code} - {e.response.text}")
+            if e.response.status_code == 429:
+                retry_after = int(e.response.headers.get("Retry-After", 10))
+                logging.warning(f"Too many requests. Retry after {retry_after} sec")
+                await asyncio.sleep(retry_after)
+                await self.send_text(text, channel_id)  # Повторная попытка
+            else:
+                logging.error(f"HTTP error {e.response.status_code}: {e.response.text}")
+        except httpx.RequestError as e:
+            logging.error(f"Connection error: {str(e)}")
         except Exception as e:
-            logging.error(f"Ошибка подключения: {str(e)}")
-            raise
-        except errors.FloodWaitError as e:
-            logging.warning("\nFloodWait на {e.seconds} секунд...\n")
-            await telegram_sender.send_text(f"FloodWait на {e.seconds} секунд...\n")
-            await asyncio.sleep(e.seconds)
+            logging.error(f"Unexpected error: {str(e)}")
+
 
 # Глобальный экземпляр
 telegram_sender = TelegramSender()
