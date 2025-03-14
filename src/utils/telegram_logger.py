@@ -1,6 +1,7 @@
 import httpx
 import logging
 import asyncio
+from telethon import errors
 from datetime import datetime
 from src.config import GROUP_LOGS_ID, TELEGRAM_BOT_TOKEN, TURN_TG_LOGGER, TITLE_TG_LOGGER
 
@@ -50,6 +51,10 @@ class TelegramSender:
         except Exception as e:
             logging.error(f"Ошибка подключения: {str(e)}")
             raise
+        except errors.FloodWaitError as e:
+            logging.warning("\nFloodWait на {e.seconds} секунд...\n")
+            await telegram_sender.send_text(f"FloodWait на {e.seconds} секунд...\n")
+            await asyncio.sleep(e.seconds)
 
 # Глобальный экземпляр
 telegram_sender = TelegramSender()
