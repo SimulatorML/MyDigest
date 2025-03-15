@@ -191,12 +191,12 @@ class SupabaseDB:
                     "is_active": True,
                     "addition_timestamp": addition_timestamp
                 }).eq("user_id", user_id).in_("channel_name", existing_to_update).execute()
-                
+
                 if not response.data:
                     logging.error("\nОшибка при обновлении существующих каналов: %s\n", response.error_message)
                     return False
 
-                # Если хочешь каналы, которые уже есть в базе без своих topics 
+                # Если хочешь обновить каналы, которые уже есть в базе без своих topics 
                 # for channel in existing_to_update:
                 #     topic_index = channels.index(channel) if channel_topics else None
                 #     topic = channel_topics[topic_index] if topic_index is not None else None
