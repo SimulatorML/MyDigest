@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Variables
+# Interval Variables
 NEWS_CHECK_INTERVAL = 600  # интервал скрапинга в секундах
+DAY_RANGE_INTERVAL = 7     # интервал скрепинга в днях для определения темы канала
 
 # Telegram configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
