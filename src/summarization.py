@@ -97,8 +97,20 @@ class Summarization:
         if not messages:
             return "Общая тематика"
 
+        # Если сообщения уже в нужном формате, используем их
+        if all(key in messages[0] for key in ["channel", "message", "message_id"]):
+            formatted_messages = messages
+        else:
+            formatted_messages = [
+                {
+                    "channel": msg.get("channel_title", "Неизвестный канал"),
+                    "message": msg["message"],
+                    "message_id": msg["message_id"]
+                } for msg in messages
+            ]
+
         prompt = (
-            f'''Analyze the list of the channel's latest messages: {messages}.
+            f'''Analyze the list of the channel's latest messages: {formatted_messages}.
                 Determine the main topic of the channel and return it as a brief, specific, and clear formulation.
                 The topic should consist of a maximum of three words (you can use commas or conjunctions if necessary).
                 The topic should be primarily in Russian.
