@@ -162,7 +162,7 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
     async def add_user_channels(
-        self, user_id: int, channels: List[str], addition_timestamp: str = None
+        self, user_id: int, channels: List[str], addition_timestamp: str = None, channel_topics: List[str] = None
     ) -> bool:
         """
         Add new channels to a user's list and update existing ones.
@@ -171,6 +171,7 @@ class SupabaseDB:
         :param channels: A list of channel names to add or update.
         :param addition_timestamp: The timestamp of the addition operation.
                                    Defaults to the current time if not provided.
+        :param channel_topics: A list of topics corresponding to each channel.
         :return: True if any channels were added or updated, otherwise False.
         :raises: SupabaseErrorHandler if an error occurs.
         """
@@ -178,30 +179,54 @@ class SupabaseDB:
             # Получаем список всех каналов, включая неактивные
             existing_channels = await self.fetch_all_user_channels(user_id)
             existing_names = {ch["channel_name"] for ch in existing_channels} if existing_channels else set()
+
             # Разделяем каналы на существующие и новые
             existing_to_update = [ch for ch in channels if ch in existing_names]
             new_to_add = [ch for ch in channels if ch not in existing_names]
 
             # Обновляем существующие каналы
             if existing_to_update:
-                self.client.table("user_channels").update({
+                logging.info("\nОбновляем существующие каналы: %s\n", existing_to_update)
+                response = self.client.table("user_channels").update({
                     "is_active": True,
                     "addition_timestamp": addition_timestamp
                 }).eq("user_id", user_id).in_("channel_name", existing_to_update).execute()
+                
+                if not response.data:
+                    logging.error("\nОшибка при обновлении существующих каналов: %s\n", response.error_message)
+                    return False
+
+                # Если хочешь каналы, которые уже есть в базе без своих topics 
+                # for channel in existing_to_update:
+                #     topic_index = channels.index(channel) if channel_topics else None
+                #     topic = channel_topics[topic_index] if topic_index is not None else None
+                #     response = self.client.table("user_channels").update({
+                #         "is_active": True,
+                #         "addition_timestamp": addition_timestamp,
+                #         "channel_topic": topic
+                #     }).eq("user_id", user_id).eq("channel_name", channel).execute()
+
+                #     if not response.data:
+                #         logging.error("\nОшибка при обновлении существующих каналов: %s\n", response.error_message)
+                #         return False
 
             # Добавляем новые каналы
             if new_to_add:
+                logging.info("\nДобавляем новые каналы: %s\n", new_to_add)
                 new_data = [{
                     "user_id": user_id,
                     "channel_name": channel,
                     "channel_link": f"https://t.me/{channel[1:]}",
                     "addition_timestamp": addition_timestamp,
-                    "is_active": True
-                } for channel in new_to_add
-                ]
+                    "is_active": True,
+                    "channel_topic": channel_topics[channels.index(channel)] if channel_topics else None
+                } for channel in new_to_add]
 
                 if new_data:
-                    self.client.table("user_channels").upsert(new_data).execute()
+                    response = self.client.table("user_channels").upsert(new_data).execute()
+                    if not response.data:
+                        logging.error("\nОшибка при добавлении новых каналов: %s\n", response.error_message)
+                        return False
 
             return bool(existing_to_update or new_to_add)
 
