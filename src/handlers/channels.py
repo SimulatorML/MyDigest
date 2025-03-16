@@ -253,6 +253,9 @@ async def process_select_callback(callback: CallbackQuery, state: FSMContext):
         InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
         InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
     )
+    builder.row(
+        InlineKeyboardButton(text="🗑️ Удалить все каналы", callback_data="delete_all")  # Добавляем кнопку "Удалить все каналы"
+    )
 
     # Обновляем сообщение с новой клавиатурой
     await callback.message.edit_text(
@@ -290,7 +293,6 @@ async def process_confirm_delete_callback(callback: CallbackQuery, state: FSMCon
 async def process_cancel_delete_callback(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text("Операция удаления отменена.")
     await state.clear()
-
 
 @router.callback_query(F.data == "cancel")
 async def process_cancel_callback(callback: CallbackQuery):
