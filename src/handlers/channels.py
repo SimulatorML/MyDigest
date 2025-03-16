@@ -237,7 +237,7 @@ async def process_select_callback(callback: CallbackQuery, state: FSMContext):
     builder.button(text="❌ Отмена", callback_data="cancel_delete")
 
     # Устанавливаем количество кнопок в строке (2 кнопки в строке для каналов)
-    builder.adjust(1, 2)
+    builder.adjust(2)
 
     # Обновляем сообщение с новой клавиатурой
     await callback.message.edit_text("Выберите каналы для удаления (нажмите на канал, чтобы отметить его):", reply_markup=builder.as_markup())
