@@ -237,7 +237,7 @@ async def process_select_callback(callback: CallbackQuery, state: FSMContext):
     builder.button(text="❌ Отмена", callback_data="cancel_delete")
 
     # Устанавливаем количество кнопок в строке (2 кнопки в строке для каналов)
-    builder.adjust(2, 1)
+    builder.adjust(1, 2)
 
     # Обновляем сообщение с новой клавиатурой
     await callback.message.edit_text("Выберите каналы для удаления (нажмите на канал, чтобы отметить его):", reply_markup=builder.as_markup())
@@ -273,21 +273,6 @@ async def process_cancel_delete_callback(callback: CallbackQuery, state: FSMCont
     await callback.message.edit_text("Операция удаления отменена.")
     await state.clear()
 
-# @router.callback_query(F.data.startswith('delete_'))
-# async def process_delete_callback(callback: CallbackQuery):
-#     user_id = callback.from_user.id
-#     channel_name = callback.data[len('delete_'):]  # Извлекаем имя канала из callback_data
-
-#     # Удаляем канал из базы данных
-#     result = await db.delete_user_channels(user_id, [channel_name])
-    
-#     if result:
-#         await callback.message.edit_text(f"Канал {channel_name} успешно удален.")
-#     else:
-#         await callback.message.edit_text("Произошла ошибка при удалении канала.")
-
-#     # Убираем клавиатуру после удаления
-    # await callback.message.edit_reply_markup(reply_markup=None)
 
 @router.callback_query(F.data == "cancel")
 async def process_cancel_callback(callback: CallbackQuery):
