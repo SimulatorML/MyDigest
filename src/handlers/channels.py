@@ -218,39 +218,39 @@ async def process_cancel_callback(callback: CallbackQuery):
     await callback.message.edit_text("Операция удаления отменена.")
     await callback.message.edit_reply_markup(reply_markup=None)
 
-## Состояние ожидания ввода каналов для удаления
-@router.message(UserStates.waiting_for_delete)
-async def process_delete_channels(message: Message, state: FSMContext):
-    # Сбрасываем состояние если сообщение - другая команда
-    if message.text.startswith('/'):
-        await message.answer(f"Вы отменили удаление 👌")
-        await state.clear()
-        return
+# ## Состояние ожидания ввода каналов для удаления
+# @router.message(UserStates.waiting_for_delete)
+# async def process_delete_channels(message: Message, state: FSMContext):
+#     # Сбрасываем состояние если сообщение - другая команда
+#     if message.text.startswith('/'):
+#         await message.answer(f"Вы отменили удаление 👌")
+#         await state.clear()
+#         return
 
-    user_id = message.from_user.id
+#     user_id = message.from_user.id
 
-    # Обрабатываем список каналов
-    channels_to_delete = process_channel_list(message.text)
+#     # Обрабатываем список каналов
+#     channels_to_delete = process_channel_list(message.text)
 
-    if not channels_to_delete:
-        await message.answer("Не удалось распознать ни одного канала. Пожалуйста, попробуйте снова.")
-        return
+#     if not channels_to_delete:
+#         await message.answer("Не удалось распознать ни одного канала. Пожалуйста, попробуйте снова.")
+#         return
 
-    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in channels_to_delete):
-        await message.answer(
-            "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
-            "Пожалуйста, проверьте правильность написания и попробуйте снова."
-        )
-        return
+#     if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in channels_to_delete):
+#         await message.answer(
+#             "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
+#             "Пожалуйста, проверьте правильность написания и попробуйте снова."
+#         )
+#         return
 
-    result = await db.delete_user_channels(user_id, list(channels_to_delete))
-    if not result:
-        await message.answer("Произошла ошибка при удалении каналов\nили неверно введены данные.")
-        return
+#     result = await db.delete_user_channels(user_id, list(channels_to_delete))
+#     if not result:
+#         await message.answer("Произошла ошибка при удалении каналов\nили неверно введены данные.")
+#         return
 
-    await message.answer(f"Каналы удалены: {', '.join(channels_to_delete)}")
-    # Сбрасываем состояние
-    await state.clear()
+#     await message.answer(f"Каналы удалены: {', '.join(channels_to_delete)}")
+#     # Сбрасываем состояние
+#     await state.clear()
 
 ############################## clear_channels - Очистить каналы #################
 
