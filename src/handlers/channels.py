@@ -213,7 +213,7 @@ async def process_delete_callback(callback: CallbackQuery):
     # Убираем клавиатуру после удаления
     await callback.message.edit_reply_markup(reply_markup=None)
 
-@router.callback_query(F.data == "cancel"))
+@router.callback_query(F.data == "cancel")
 async def process_cancel_callback(callback: CallbackQuery):
     await callback.message.edit_text("Операция удаления отменена.")
     await callback.message.edit_reply_markup(reply_markup=None)
