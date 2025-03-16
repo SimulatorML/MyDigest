@@ -12,10 +12,12 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client, close_telethon_client
-from src.config import NEWS_CHECK_INTERVAL
+from src.config import NEWS_CHECK_INTERVAL, DAY_RANGE_INTERVAL, MISTRAL_KEY
+from src.summarization import Summarization
 
 router = Router()
 db = SupabaseDB(supabase)
+summarizer = Summarization(api_key=MISTRAL_KEY)
 
 class UserStates(StatesGroup):
     waiting_for_channels = State()
@@ -97,7 +99,7 @@ async def process_channels_input(message: Message, state: FSMContext):
 
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
-        await message.answer(f"Вы отменили добавление каналов 👌")
+        await message.answer("Вы отменили добавление каналов 👌")
         await state.clear()
         return
 
@@ -109,10 +111,10 @@ async def process_channels_input(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    # Получаем данные из сообщения
     user_id = message.from_user.id
     channels_text = message.text.strip()
     addition_timestamp = datetime.now().isoformat()
+    scraper = TelegramScraper(user_id)
 
     if not channels_text:
         await message.answer("Пожалуйста, отправьте корректный список каналов.")
@@ -124,8 +126,7 @@ async def process_channels_input(message: Message, state: FSMContext):
     if not new_channels:
         await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
         return
-    
-    # Обрабатываем список каналов
+
     if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
         await message.answer(
             "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
@@ -134,14 +135,27 @@ async def process_channels_input(message: Message, state: FSMContext):
         return
 
     try:
-        success = await db.add_user_channels(user_id, list(new_channels), addition_timestamp)
+        tasks = [
+            asyncio.create_task(
+                summarizer.determine_channel_topic(
+                    await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
+                )
+            )
+            for channel in new_channels
+        ]
+
+        # Ожидаем завершения всех задач
+        channel_topics = await asyncio.gather(*tasks)
+        # logging.info("\n\nСписок тем каналов для сохранения в БД: %s\n", channel_topics)
+
+        success = await db.add_user_channels(user_id, list(new_channels), addition_timestamp, channel_topics)
         if success:
             channels_list = ', '.join(new_channels)
             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
         else:
             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
     except Exception as e:
-        logging.error(f"Error adding channels for user {user_id}: {str(e)}")
+        logging.error("\nError adding channels for user %s: %s\n", user_id, e)
         await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
     finally:
         await state.clear()

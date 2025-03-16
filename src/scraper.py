@@ -241,3 +241,54 @@ class TelegramScraper:
                 del TelegramScraper.running_tasks[user_id]
                 return True
             return False
+
+    async def scrape_messages_long_term(self, entity_name: str, days: int = 2, limit: int = 1000) -> List[Dict[str, Union[int, str, datetime]]]:
+        """
+        Scrape messages from a specified Telegram channel within the past specified number of days.
+
+        :param entity_name: The username or channel name of the Telegram entity.
+        :param days: The number of days to look back for messages. Defaults to 2 days.
+        :param limit: The maximum number of messages to scrape. Defaults to 1000.
+        :return: A list of dictionaries, each containing:
+                 - 'message_id': The unique ID of the message.
+                 - 'message': The text content of the message.
+                 - 'message_date': The timestamp of when the message was sent.
+                 - 'channel_title': The title of the channel.
+        :raises: Exception if message scraping fails.
+        """
+        client = await init_telethon_client()
+        entity = await self.get_entity(entity_name)
+        if not entity:
+            return []
+
+        now = datetime.utcnow()
+        start_time = now - timedelta(days=days)
+
+        channel_title = getattr(entity, 'title', 'Неизвестный канал')
+        messages = []
+
+        while True:
+            try:
+                async for message in client.iter_messages(entity, limit=limit):
+                    message_date_naive = message.date.replace(tzinfo=None)
+                    if message_date_naive >= start_time:
+                        messages.append({
+                            "message_id": message.id,
+                            "message": message.text,
+                            "message_date": message.date,
+                            "channel_title": channel_title
+                        })
+                    else:
+                        break
+
+                # Добавляем задержку между запросами
+                await asyncio.sleep(1)
+
+                break
+            except errors.FloodWaitError as e:
+                logging.warning("\nFloodWait на %s секунд...\n", e.seconds)
+                await asyncio.sleep(e.seconds)
+            except Exception as e:
+                logging.error("\nFailed to scrape messages: %s", e)
+                break
+        return messages

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS user_channels (
     channel_id bigint NOT NULL PRIMARY KEY,
     user_id bigint NOT NULL REFERENCES users(user_id),
     channel_name varchar(255) NOT NULL,
+    channel_topic text NULL default '',
     channel_link varchar(255) NULL,
     addition_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP WITHOUT TIME ZONE,
     is_active boolean NOT NULL default true
