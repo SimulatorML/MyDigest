@@ -172,11 +172,9 @@ class TelegramScraper:
 
             for channel in user_channels:
                 messages = await self.scrape_messages(channel["channel_name"], limit=100)
-                await telegram_sender.send_text(
-                    f"🐈 Посты с канала {channel['channel_name']}\nдля юзера {user_id} собранны")
                 
                 if not messages:
-                    await telegram_sender.send_text(f"🐈👎 для юзера {user_id} нет сообщений на канале {channel['channel_name']}")
+                    # await telegram_sender.send_text(f"🐈👎 для юзера {user_id} нет сообщений на канале {channel['channel_name']}")
                     continue
 
                 recent_messages = [
@@ -195,8 +193,6 @@ class TelegramScraper:
                         "message_id": msg["message_id"],
                         "channel_title": msg.get("channel_title", channel["channel_name"].lstrip("@"))
                     })
-                await telegram_sender.send_text(
-                    f"🐈 Посты для юзера {user_id} агрегированны")
                 await asyncio.sleep(1)
 
             if aggregated_news:
@@ -213,8 +209,8 @@ class TelegramScraper:
                 
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
-            await telegram_sender.send_text(f"🐈❌Ошибка в check_new_messages: user_id {user_id};\n {str(e)}")
             await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+            await telegram_sender.send_text(f"🐈❌Ошибка в check_new_messages: user_id {user_id};\n {str(e)}")
             
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):

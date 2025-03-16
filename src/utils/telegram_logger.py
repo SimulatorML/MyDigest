@@ -1,7 +1,6 @@
 import httpx
 import logging
 import asyncio
-from telethon import errors
 from datetime import datetime
 from src.config import GROUP_LOGS_ID, TELEGRAM_BOT_TOKEN, TURN_TG_LOGGER, TITLE_TG_LOGGER
 
