@@ -202,10 +202,13 @@ async def process_delete_command(message: Message, state: FSMContext):
     # Распределяем кнопки каналов по строкам (по 2 кнопки в строке)
     builder.adjust(2)
 
-    # Добавляем кнопки действий в отдельную строку
+    # Добавляем кнопки действий в отдельные строки
     builder.row(
         InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
         InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📌 Выделить все", callback_data="select_all")
     )
 
     # Отправляем сообщение с клавиатурой
@@ -244,15 +247,54 @@ async def process_select_callback(callback: CallbackQuery, state: FSMContext):
     # Распределяем кнопки каналов по строкам (по 2 кнопки в строке)
     builder.adjust(2)
 
-    # Добавляем кнопки действий в отдельную строку
+    # Добавляем кнопки действий в отдельные строки
     builder.row(
         InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
         InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📌 Выделить все", callback_data="select_all")
     )
 
     # Обновляем сообщение с новой клавиатурой
     await callback.message.edit_text(
         "Выберите каналы для удаления (нажмите на канал, чтобы отметить его):",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
+# Выделить все каналы
+@router.callback_query(F.data == "select_all", UserStates.selecting_channels)
+async def process_select_all_callback(callback: CallbackQuery, state: FSMContext):
+    # Получаем текущие данные из состояния
+    data = await state.get_data()
+    channels = data.get("channels", [])
+
+    # Отмечаем все каналы как выбранные
+    await state.update_data(selected_channels=channels)
+
+    # Создаем билдер для inline-клавиатуры
+    builder = InlineKeyboardBuilder()
+
+    # Добавляем кнопки каналов с отметкой "📌"
+    for channel in channels:
+        builder.button(text=f"📌 {channel}", callback_data=f"select_{channel}")
+
+    # Распределяем кнопки каналов по строкам (по 2 кнопки в строке)
+    builder.adjust(2)
+
+    # Добавляем кнопки действий в отдельные строки
+    builder.row(
+        InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
+        InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📌 Выделить все", callback_data="select_all")
+    )
+
+    # Обновляем сообщение с новой клавиатурой
+    await callback.message.edit_text(
+        "Все каналы выделены. Нажмите '✅ Подтвердить', чтобы удалить их, или '❌ Отмена', чтобы отменить.",
         reply_markup=builder.as_markup()
     )
     await callback.answer()
