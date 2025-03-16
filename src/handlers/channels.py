@@ -253,9 +253,6 @@ async def process_select_callback(callback: CallbackQuery, state: FSMContext):
         InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
         InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
     )
-    builder.row(
-        InlineKeyboardButton(text="📌 Выделить все", callback_data="select_all")
-    )
 
     # Обновляем сообщение с новой клавиатурой
     await callback.message.edit_text(
