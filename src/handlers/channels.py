@@ -41,6 +41,7 @@ async def process_start_command(message: Message):
         "/clear_channels - полностью очистить список каналов\n"
         "/help - показать список команд\n"
         "/receive_news - показывать сводки новостей за час\n"
+        "/stop_news - остановить сообщения"
     )
 
     # Закрепляем сообщение в шапке бота
@@ -70,8 +71,9 @@ async def process_help_command(message: Message):
         "/show_channels - показать список ваших каналов\n"
         "/delete_channels - удалить каналы\n"
         "/clear_channels - полностью очистить список каналов\n"
-        "/help - показать эту справку\n"
+        "/help - показать список команд\n"
         "/receive_news - показывать сводки новостей за час\n"
+        "/stop_news - остановить сообщения"
     )
 
 
@@ -103,7 +105,7 @@ async def process_channels_input(message: Message, state: FSMContext):
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
         await message.answer(f"Вы отменили добавление каналов 👌")
-        # await telegram_sender.send_text(f"📄🙅‍♂️Юзер {user_id} отменил добавление каналов")
+        await telegram_sender.send_text(f"📄🙅‍♂️Юзер {user_id} отменил добавление каналов")
         await state.clear()
         return
 
@@ -112,7 +114,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
                              "Перешлите пост из канала)\n\n"
                              "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
-        # await telegram_sender.send_text(f"📄🤦‍♂️Юзер {user_id} переслал сообщение от человека")
+        await telegram_sender.send_text(f"📄🤦‍♂️Юзер {user_id} переслал сообщение от человека")
         await state.clear()
         return
 
@@ -145,7 +147,7 @@ async def process_channels_input(message: Message, state: FSMContext):
         if success:
             channels_list = ', '.join(new_channels)
             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
-            # await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил {len(new_channels)} каналов.")
+            await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил {len(new_channels)} каналов.")
         else:
             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
             await telegram_sender.send_text(f"📄⚠️success не получился при добавлении каналов: user_id {user_id}\n{str(e)}")
@@ -170,6 +172,8 @@ async def process_show_channels_command(message: Message):
         await message.answer(f"Ваши каналы:\n{', '.join(channel_names)}")
     else:
         await message.answer("У вас пока нет добавленных каналов.")
+    
+    await telegram_sender.send_text(f"📄👇Юзер {user_id} нажал на show_channels")
 
 ############################## delete_channels - Удалить каналы #################
 
@@ -192,6 +196,8 @@ async def process_delete_command(message: Message, state: FSMContext):
         f"Введите канал или список каналов для удаления\n\n"
         f"Если передумали - нажмите 👉 /cancel"
     )
+    
+    await telegram_sender.send_text(f"📄👇Юзер {user_id} нажал на delete_channels")
 
     # Активируем состояние ожидания ввода каналов
     await state.set_state(UserStates.waiting_for_delete)
@@ -350,7 +356,7 @@ async def forwarded_message(message: Message):
 
     if success:
         await message.answer(f"Канал {channel} успешно добавлен! ✔️")
-        # await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил канал пересылкой")
+        await telegram_sender.send_text(f"📄✅Юзер {user_id} добавил канал пересылкой")
         await message.delete()
     else:
         await message.answer("Произошла ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
