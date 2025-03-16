@@ -187,6 +187,7 @@ class SupabaseDB:
             # Обновляем существующие каналы
             if existing_to_update:
                 logging.info("\nОбновляем существующие каналы: %s\n", existing_to_update)
+                # Обновить каналы, имеющие свои topics - активируй этот кусок
                 response = self.client.table("user_channels").update({
                     "is_active": True,
                     "addition_timestamp": addition_timestamp
@@ -196,13 +197,12 @@ class SupabaseDB:
                     logging.error("\nОшибка при обновлении существующих каналов: %s\n", response.error_message)
                     return False
 
-                # Если хочешь обновить каналы, которые уже есть в базе без своих topics 
+                # Обновить каналы, НЕ имеющие своих topics - активируй этот кусок
                 # for channel in existing_to_update:
                 #     topic_index = channels.index(channel) if channel_topics else None
                 #     topic = channel_topics[topic_index] if topic_index is not None else None
                 #     response = self.client.table("user_channels").update({
-                #         "is_active": True,
-                #         "addition_timestamp": addition_timestamp,
+                #         "is_active": True,      # True - активные, False - неактивные. Помечай как надо
                 #         "channel_topic": topic
                 #     }).eq("user_id", user_id).eq("channel_name", channel).execute()
 
