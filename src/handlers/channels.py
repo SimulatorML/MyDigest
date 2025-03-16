@@ -6,6 +6,7 @@ from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram import F
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from src.scraper import TelegramScraper
@@ -177,7 +178,7 @@ async def process_show_channels_command(message: Message):
 
 # Обработчик для удаления каналов
 @router.message(Command("delete_channels"))
-async def process_delete_command(message: Message, state: FSMContext):
+async def process_delete_command(message: Message):
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
@@ -185,17 +186,22 @@ async def process_delete_command(message: Message, state: FSMContext):
         await message.answer("У вас нет добавленных каналов.")
         return
 
-    # Формируем клавиатуру с каналами
-    keyboard = []
+    # Создаем билдер для inline-клавиатуры
+    builder = InlineKeyboardBuilder()
+
+    # Добавляем кнопки с каналами в два столбца
     for channel in channels:
         channel_name = channel["channel_name"]
-        keyboard.append([InlineKeyboardButton(text=channel_name, callback_data=f"delete_{channel_name}")])
+        builder.button(text=channel_name, callback_data=f"delete_{channel_name}")
 
     # Добавляем кнопку отмены
-    keyboard.append([InlineKeyboardButton(text="Отмена", callback_data="cancel")])
+    builder.button(text="Отмена", callback_data="cancel")
+
+    # Устанавливаем количество кнопок в строке (2 кнопки в строке для каналов)
+    builder.adjust(2)
 
     # Отправляем сообщение с клавиатурой
-    await message.answer("Выберите каналы для удаления:", reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
+    await message.answer("Выберите каналы для удаления:", reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith('delete_'))
 async def process_delete_callback(callback: CallbackQuery):
