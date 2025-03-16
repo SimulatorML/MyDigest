@@ -176,27 +176,47 @@ async def process_show_channels_command(message: Message):
 ############################## delete_channels - Удалить каналы #################
 
 # Обработчик для удаления каналов
-@router.message(Command(commands="delete_channels"))
+@router.message(Command("delete_channels"))
 async def process_delete_command(message: Message, state: FSMContext):
-    
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
-    # Проверяем, есть ли у пользователя добавленные каналы
     if not channels:
-        await message.answer("У вас нет добавленных каналов для удаления.")
+        await message.answer("У вас нет добавленных каналов.")
         return
 
-    channel_names = [channel["channel_name"] for channel in channels]
-    await message.answer(
-        f"Текущий список ваших каналов:\n"
-        f"{', '.join(channel_names)}\n\n"
-        f"Введите канал или список каналов для удаления\n\n"
-        f"Если передумали - нажмите 👉 /cancel"
-    )
+    # Формируем клавиатуру с каналами
+    keyboard = []
+    for channel in channels:
+        channel_name = channel["channel_name"]
+        keyboard.append([InlineKeyboardButton(text=channel_name, callback_data=f"delete_{channel_name}")])
 
-    # Активируем состояние ожидания ввода каналов
-    await state.set_state(UserStates.waiting_for_delete)
+    # Добавляем кнопку отмены
+    keyboard.append([InlineKeyboardButton(text="Отмена", callback_data="cancel")])
+
+    # Отправляем сообщение с клавиатурой
+    await message.answer("Выберите каналы для удаления:", reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
+
+@router.callback_query(F.data.startswith('delete_'))
+async def process_delete_callback(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    channel_name = callback.data[len('delete_'):]  # Извлекаем имя канала из callback_data
+
+    # Удаляем канал из базы данных
+    result = await db.delete_user_channels(user_id, [channel_name])
+    
+    if result:
+        await callback.message.edit_text(f"Канал {channel_name} успешно удален.")
+    else:
+        await callback.message.edit_text("Произошла ошибка при удалении канала.")
+
+    # Убираем клавиатуру после удаления
+    await callback.message.edit_reply_markup(reply_markup=None)
+
+@router.callback_query(F.data == "cancel"))
+async def process_cancel_callback(callback: CallbackQuery):
+    await callback.message.edit_text("Операция удаления отменена.")
+    await callback.message.edit_reply_markup(reply_markup=None)
 
 ## Состояние ожидания ввода каналов для удаления
 @router.message(UserStates.waiting_for_delete)
