@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Interval Variables
-NEWS_CHECK_INTERVAL = 600  # интервал скрапинга в секундах
+NEWS_CHECK_INTERVAL = 3600  # интервал скрапинга в секундах
 DAY_RANGE_INTERVAL = 7     # интервал скрепинга в днях для определения темы канала
 
 # Telegram configuration

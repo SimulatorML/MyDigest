@@ -9,6 +9,32 @@ class Summarization:
         self.api_key = api_key
         self.model = model
 
+    async def _mistral_request(self, prompt: str, max_retries: int = 5) -> str:
+        """Makes request to Mistral API with retry&backoff logic
+        :param prompt: The prompt to be made and a number of retries"""
+
+        retry_delay = 1
+        async with Mistral(api_key=self.api_key) as client:
+            for attempt in range(max_retries):
+                try:
+                    response = await client.chat.complete_async(
+                        model=self.model,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    return response.choices[0].message.content
+                except Exception as e:
+                    if "Status 429" in str(e):
+                        # Проверяем наличие заголовка Retry-After
+                        retry_after = getattr(e, 'headers', {}).get('Retry-After', retry_delay)
+                        retry_delay = min(float(retry_after), 60)
+                        logging.warning("Rate limit exceeded. Attempt %s/%s. Retrying in %s seconds...",
+                                        attempt + 1, max_retries, retry_delay)
+                        await asyncio.sleep(retry_delay + random.uniform(0, 1))
+                        retry_delay *= 2  # Увеличиваем задержку экспоненциально
+                    else:
+                        raise
+                raise Exception("Max retries exceeded")
+
     async def summarize_news_items(self, news: List[Dict[str, Union[str, int]]]) -> str:
         """
         Generates a summarized version of provided news items, clustering similar ones together.
@@ -39,14 +65,9 @@ class Summarization:
         )
 
         try:
-            async with Mistral(api_key=self.api_key) as client:
-                response = await client.chat.complete_async(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-            return response.choices[0].message.content
+            return await self._mistral_request(prompt)
         except Exception as e:
-            logging.error("Ошибка генерации дайджеста: %s", e)
+            logging.error("Error during summarization: %s", e)
             return "Failed to generate the summary."
 
     async def cluster_summaries(self, summaries_text: str) -> str:
@@ -68,16 +89,11 @@ class Summarization:
                 Ensure the topics are broad and general; limit the number of topics to 5.
                 Do not include bullet points, numbering, or other list formats. Keep it clean and structured as requested.
                 Summaries text: \n{summaries_text}. 
-                Make sure that the resulting output does not exceed 4000 characters.'''
+                Make sure that the resulting output does not exceed 4000 characters.
+         '''
         )
-
         try:
-            async with Mistral(api_key=self.api_key) as client:
-                response = await client.chat.complete_async(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-            return response.choices[0].message.content
+            return await self._mistral_request(prompt)
         except Exception as e:
             logging.error("Error during clustering: %s", e)
             return "Failed to produce the final digest."
@@ -122,30 +138,7 @@ class Summarization:
         )
 
         try:
-            # Используем экспоненциальную задержку в случае превышения лимита
-            async with Mistral(api_key=self.api_key) as client:
-                retry_delay = 1  # Начальная задержка
-                max_retries = 5  # Максимальное количество попыток
-
-                for attempt in range(max_retries):
-                    try:
-                        response = await client.chat.complete_async(
-                            model=self.model,
-                            messages=[{"role": "user", "content": prompt}]
-                        )
-                        return response.choices[0].message.content
-                    except Exception as e:
-                        if "Status 429" in str(e):
-                            # Проверяем наличие заголовка Retry-After
-                            retry_after = getattr(e, 'headers', {}).get('Retry-After', retry_delay)
-                            retry_delay = min(float(retry_after), 60)
-                            logging.warning("Rate limit exceeded. Attempt %s/%s. Retrying in %s seconds...", 
-                                            attempt + 1, max_retries, retry_delay)
-                            await asyncio.sleep(retry_delay + random.uniform(0, 1))
-                            retry_delay *= 2  # Увеличиваем задержку экспоненциально
-                        else:
-                            raise
-                raise Exception("Max retries exceeded")
+            return await self._mistral_request(prompt)
         except Exception as e:
             logging.error("Error determining channel topic: %s", e)
             return "Failed to determine channel topic."
