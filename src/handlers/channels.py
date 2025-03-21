@@ -65,11 +65,12 @@ TUTORIAL_STEPS = [
         '''
 Вот список всех команд:
 
-    /add_channels - добавить каналы
-    /show_channels - показать список ваших каналов
-    /delete_channels - удалить каналы
+    /add_channels - добавить каналы\n
+    /delete_channels - удалить каналы\n
+    /receive_news - показывать сводки новостей за час\n
+    /stop_news - остановить сводку новостей\n
+    /show_channels - показать список ваших каналов\n
     /help - показать список команд
-    /receive_news - показывать сводки новостей за час
 
 Нажмите «Назад», чтобы вернуться к предыдущему шагу или «Завершить», чтобы закончить.
         '''.strip()
@@ -183,10 +184,10 @@ async def process_help_command(message: Message):
     await message.answer(
         "Доступные команды:\n"
         "/add_channels - добавить каналы\n"
-        "/show_channels - показать список ваших каналов\n"
         "/delete_channels - удалить каналы\n"
-        "/help - показать эту справку\n"
         "/receive_news - показывать сводки новостей за час\n"
+        "/stop_news - остановить сводку новостей\n"
+        "/show_channels - показать список ваших каналов\n"
     )
 
 
@@ -334,7 +335,6 @@ async def process_delete_command(message: Message, state: FSMContext):
         reply_markup=builder.as_markup()
     )
 
-
 @router.callback_query(F.data.startswith('select_'), UserStates.selecting_channels)
 async def process_select_callback(callback: CallbackQuery, state: FSMContext):
     channel_name = callback.data[len('select_'):]  # Извлекаем имя канала из callback_data
@@ -480,19 +480,6 @@ async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSM
     )
     await callback.answer()
 
-
-############################## show_channels - Показать каналы #####################
-
-@router.message(Command(commands="show_channels"))
-async def process_show_channels_command(message: Message):
-    user_id = message.from_user.id
-    channels = await db.fetch_user_channels(user_id)
-
-    if channels is not None:
-        channel_names = [channel["channel_name"] for channel in channels]
-        await message.answer(f"Ваши каналы:\n{', '.join(channel_names)}")
-    else:
-        await message.answer("У вас пока нет добавленных каналов.")
 
 ############################## receive_news - Получить сводки новостей ############
 
