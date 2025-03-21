@@ -4,10 +4,8 @@ from aiogram import Bot
 
 # Команды для работы с каналами
 CHANNEL_COMMANDS = [
-    BotCommand(command="add_channels", description="Добавить каналы"),
     BotCommand(command="show_channels", description="Показать список каналов"),
     BotCommand(command="delete_channels", description="Удалить каналы"),
-    BotCommand(command="clear_channels", description="Очистить список каналов"),
 ]
 
 # Команды для работы с дайджестами
