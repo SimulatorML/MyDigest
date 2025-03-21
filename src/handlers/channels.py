@@ -65,10 +65,9 @@ TUTORIAL_STEPS = [
         '''
 Вот список всех команд:
 
-    /add_channels - добавить каналы\n
-    /delete_channels - удалить каналы\n
     /receive_news - показывать сводки новостей за час\n
     /stop_news - остановить сводку новостей\n
+    /delete_channels - удалить каналы\n
     /show_channels - показать список ваших каналов\n
     /help - показать список команд
 
@@ -183,98 +182,97 @@ async def tutorial_finish_handler(callback: CallbackQuery):
 async def process_help_command(message: Message):
     await message.answer(
         "Доступные команды:\n"
-        "/add_channels - добавить каналы\n"
         "/delete_channels - удалить каналы\n"
         "/receive_news - показывать сводки новостей за час\n"
         "/stop_news - остановить сводку новостей\n"
         "/show_channels - показать список ваших каналов\n"
     )
 
-############################## add_channels - Добавить каналы ######################
+# ############################## add_channels - Добавить каналы ######################
 
-@router.message(Command(commands="add_channels"))
-async def process_add_channels_command(message: Message, state: FSMContext):
-    await message.answer(
-        f"Жду список каналов 👀\n\n"
-        f"Формат может быть произвольным.\n"
-        f"Например: @channel1 https://t.me/channel2 channel3\n\n"
-        f"Если передумали - нажмите 👉 /cancel"
-    )
-    # Устанавливаем состояние ожидания ввода каналов
-    await state.set_state(UserStates.waiting_for_channels)
+# @router.message(Command(commands="add_channels"))
+# async def process_add_channels_command(message: Message, state: FSMContext):
+#     await message.answer(
+#         f"Жду список каналов 👀\n\n"
+#         f"Формат может быть произвольным.\n"
+#         f"Например: @channel1 https://t.me/channel2 channel3\n\n"
+#         f"Если передумали - нажмите 👉 /cancel"
+#     )
+#     # Устанавливаем состояние ожидания ввода каналов
+#     await state.set_state(UserStates.waiting_for_channels)
 
-### Обработчик для получения списка каналов
-@router.message(UserStates.waiting_for_channels)
-async def process_channels_input(message: Message, state: FSMContext):
+# ### Обработчик для получения списка каналов
+# @router.message(UserStates.waiting_for_channels)
+# async def process_channels_input(message: Message, state: FSMContext):
 
-    # Если это пересылка поста из группы, то добавляем как forwarded сообщение
-    if message.forward_from_chat and message.forward_from_chat.type == 'channel':
-        await forwarded_message(message)
-        await state.clear()
-        return
+#     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
+#     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
+#         await forwarded_message(message)
+#         await state.clear()
+#         return
 
-    # Сбрасываем состояние если сообщение - команда
-    if message.text and message.text.startswith('/'):
-        await message.answer("Вы отменили добавление каналов 👌")
-        await state.clear()
-        return
+#     # Сбрасываем состояние если сообщение - команда
+#     if message.text and message.text.startswith('/'):
+#         await message.answer("Вы отменили добавление каналов 👌")
+#         await state.clear()
+#         return
 
-    # Если это пересылка от юзера в чате, то пишем что это человек
-    if message.forward_from and message.from_user:
-        await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
-                             "Перешлите пост из канала)\n\n"
-                             "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
-        await state.clear()
-        return
+#     # Если это пересылка от юзера в чате, то пишем что это человек
+#     if message.forward_from and message.from_user:
+#         await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
+#                              "Перешлите пост из канала)\n\n"
+#                              "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
+#         await state.clear()
+#         return
 
-    user_id = message.from_user.id
-    channels_text = message.text.strip()
-    addition_timestamp = datetime.now().isoformat()
-    scraper = TelegramScraper(user_id)
+#     user_id = message.from_user.id
+#     channels_text = message.text.strip()
+#     addition_timestamp = datetime.now().isoformat()
+#     scraper = TelegramScraper(user_id)
 
-    if not channels_text:
-        await message.answer("Пожалуйста, отправьте корректный список каналов.")
-        return
+#     if not channels_text:
+#         await message.answer("Пожалуйста, отправьте корректный список каналов.")
+#         return
 
-    # Обрабатываем список каналов
-    new_channels = process_channel_list(channels_text)
+#     # Обрабатываем список каналов
+#     new_channels = process_channel_list(channels_text)
 
-    if not new_channels:
-        await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
-        return
+#     if not new_channels:
+#         await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
+#         return
 
-    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
-        await message.answer(
-            "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
-            "Пожалуйста, проверьте правильность написания и попробуйте снова."
-        )
-        return
+#     if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
+#         await message.answer(
+#             "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
+#             "Пожалуйста, проверьте правильность написания и попробуйте снова."
+#         )
+#         return
 
-    try:
-        tasks = [
-            asyncio.create_task(
-                summarizer.determine_channel_topic(
-                    await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
-                )
-            )
-            for channel in new_channels
-        ]
+#     try:
+#         tasks = [
+#             asyncio.create_task(
+#                 summarizer.determine_channel_topic(
+#                     await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
+#                 )
+#             )
+#             for channel in new_channels
+#         ]
 
-        # Ожидаем завершения всех задач
-        channel_topics = await asyncio.gather(*tasks)
-        # logging.info("\n\nСписок тем каналов для сохранения в БД: %s\n", channel_topics)
+#         # Ожидаем завершения всех задач
+#         channel_topics = await asyncio.gather(*tasks)
+#         # logging.info("\n\nСписок тем каналов для сохранения в БД: %s\n", channel_topics)
 
-        success = await db.add_user_channels(user_id, list(new_channels), addition_timestamp, channel_topics)
-        if success:
-            channels_list = ', '.join(new_channels)
-            await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
-        else:
-            await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
-    except Exception as e:
-        logging.error("\nError adding channels for user %s: %s\n", user_id, e)
-        await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
-    finally:
-        await state.clear()
+#         success = await db.add_user_channels(user_id, list(new_channels), addition_timestamp, channel_topics)
+#         if success:
+#             channels_list = ', '.join(new_channels)
+#             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
+#         else:
+#             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
+#     except Exception as e:
+#         logging.error("\nError adding channels for user %s: %s\n", user_id, e)
+#         await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
+#     finally:
+#         await state.clear()
 
 ############################## show_channels - Показать каналы #####################
 
