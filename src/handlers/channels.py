@@ -5,13 +5,14 @@ from datetime import datetime
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram import F
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.types import Message, InlineKeyboardButton, CallbackQuery
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
-from src.scraper import init_telethon_client, close_telethon_client
+from src.scraper import init_telethon_client
 from src.config import NEWS_CHECK_INTERVAL, DAY_RANGE_INTERVAL, MISTRAL_KEY
 from src.summarization import Summarization
 
@@ -22,6 +23,7 @@ summarizer = Summarization(api_key=MISTRAL_KEY)
 class UserStates(StatesGroup):
     waiting_for_channels = State()
     waiting_for_delete = State()
+    selecting_channels = State()
 
 ############################## Приветствие ###############################
 @router.message(CommandStart())
@@ -78,6 +80,9 @@ async def process_help_command(message: Message):
 
 @router.message(Command(commands="add_channels"))
 async def process_add_channels_command(message: Message, state: FSMContext):
+    # Сбрасываем состояние, если есть активное
+    await state.clear()
+
     await message.answer(
         f"Жду список каналов 👀\n\n"
         f"Формат может быть произвольным.\n"
@@ -163,7 +168,10 @@ async def process_channels_input(message: Message, state: FSMContext):
 ############################## show_channels - Показать каналы #####################
 
 @router.message(Command(commands="show_channels"))
-async def process_show_channels_command(message: Message):
+async def process_show_channels_command(message: Message, state: FSMContext):
+    # Сбрасываем состояние, если есть активное
+    await state.clear()
+
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
@@ -176,116 +184,202 @@ async def process_show_channels_command(message: Message):
 ############################## delete_channels - Удалить каналы #################
 
 # Обработчик для удаления каналов
-@router.message(Command(commands="delete_channels"))
+@router.message(Command("delete_channels"))
 async def process_delete_command(message: Message, state: FSMContext):
-    
+    # Сбрасываем состояние, если есть активное
+    await state.clear()
+
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
-    # Проверяем, есть ли у пользователя добавленные каналы
     if not channels:
-        await message.answer("У вас нет добавленных каналов для удаления.")
+        await message.answer("У вас нет добавленных каналов.")
         return
 
-    channel_names = [channel["channel_name"] for channel in channels]
-    await message.answer(
-        f"Текущий список ваших каналов:\n"
-        f"{', '.join(channel_names)}\n\n"
-        f"Введите канал или список каналов для удаления\n\n"
-        f"Если передумали - нажмите 👉 /cancel"
+    # Сохраняем список каналов в состоянии
+    await state.update_data(channels=[channel["channel_name"] for channel in channels])
+    await state.set_state(UserStates.selecting_channels)
+
+    # Создаем билдер для inline-клавиатуры
+    builder = InlineKeyboardBuilder()
+
+    # Добавляем кнопки каналов
+    for channel in channels:
+        channel_name = channel["channel_name"]
+        builder.button(text=channel_name, callback_data=f"select_{channel_name}")
+
+    # Распределяем кнопки каналов по строкам (по 2 кнопки в строке)
+    builder.adjust(2)
+
+    # Добавляем кнопки действий в отдельные строки
+    builder.row(
+        InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
+        InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🗑️ Удалить все каналы", callback_data="delete_all")
     )
 
-    # Активируем состояние ожидания ввода каналов
-    await state.set_state(UserStates.waiting_for_delete)
+    # Отправляем сообщение с клавиатурой
+    await message.answer(
+        "Выберите каналы для удаления (нажмите на канал, чтобы отметить его):",
+        reply_markup=builder.as_markup()
+    )
 
-## Состояние ожидания ввода каналов для удаления
-@router.message(UserStates.waiting_for_delete)
-async def process_delete_channels(message: Message, state: FSMContext):
-    # Сбрасываем состояние если сообщение - другая команда
-    if message.text.startswith('/'):
-        await message.answer(f"Вы отменили удаление 👌")
-        await state.clear()
+
+@router.callback_query(F.data.startswith('select_'), UserStates.selecting_channels)
+async def process_select_callback(callback: CallbackQuery, state: FSMContext):
+    channel_name = callback.data[len('select_'):]  # Извлекаем имя канала из callback_data
+
+    # Получаем текущие данные из состояния
+    data = await state.get_data()
+    selected_channels = data.get("selected_channels", [])
+    channels = data.get("channels", [])
+
+    # Если канал уже выбран, убираем его из списка, иначе добавляем
+    if channel_name in selected_channels:
+        selected_channels.remove(channel_name)
+    else:
+        selected_channels.append(channel_name)
+
+    # Обновляем состояние
+    await state.update_data(selected_channels=selected_channels)
+
+    # Создаем билдер для inline-клавиатуры
+    builder = InlineKeyboardBuilder()
+
+    # Добавляем кнопки каналов
+    for channel in channels:
+        text = f"📌 {channel}" if channel in selected_channels else channel
+        builder.button(text=text, callback_data=f"select_{channel}")
+
+    # Распределяем кнопки каналов по строкам (по 2 кнопки в строке)
+    builder.adjust(2)
+
+    # Добавляем кнопки действий в отдельные строки
+    builder.row(
+        InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
+        InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🗑️ Удалить все каналы", callback_data="delete_all")  # Добавляем кнопку "Удалить все каналы"
+    )
+
+    # Обновляем сообщение с новой клавиатурой
+    await callback.message.edit_text(
+        "Выберите каналы для удаления (нажмите на канал, чтобы отметить его):",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
+# Когда пользователь нажимает "Подтвердить", удаляем выбранные каналы.
+@router.callback_query(F.data == "confirm_delete", UserStates.selecting_channels)
+async def process_confirm_delete_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+
+    # Получаем выбранные каналы из состояния
+    data = await state.get_data()
+    selected_channels = data.get("selected_channels", [])
+
+    if not selected_channels:
+        await callback.answer("Вы не выбрали ни одного канала.")
         return
 
-    user_id = message.from_user.id
+    # Удаляем выбранные каналы из базы данных
+    result = await db.delete_user_channels(user_id, selected_channels)
+    
+    if result:
+        await callback.message.edit_text(f"Каналы успешно удалены: {', '.join(selected_channels)}")
+    else:
+        await callback.message.edit_text("Произошла ошибка при удалении каналов.")
 
-    # Обрабатываем список каналов
-    channels_to_delete = process_channel_list(message.text)
-
-    if not channels_to_delete:
-        await message.answer("Не удалось распознать ни одного канала. Пожалуйста, попробуйте снова.")
-        return
-
-    if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in channels_to_delete):
-        await message.answer(
-            "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
-            "Пожалуйста, проверьте правильность написания и попробуйте снова."
-        )
-        return
-
-    result = await db.delete_user_channels(user_id, list(channels_to_delete))
-    if not result:
-        await message.answer("Произошла ошибка при удалении каналов\nили неверно введены данные.")
-        return
-
-    await message.answer(f"Каналы удалены: {', '.join(channels_to_delete)}")
     # Сбрасываем состояние
     await state.clear()
 
-############################## clear_channels - Очистить каналы #################
+# Если пользователь нажимает "Отмена", просто сбрасываем состояние.
+@router.callback_query(F.data == "cancel_delete", UserStates.selecting_channels)
+async def process_cancel_delete_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("Операция удаления отменена.")
+    await state.clear()
 
-@router.message(Command(commands="clear_channels"))
-async def process_clear_command(message: Message):
-    # Создаем объекты инлайн-кнопок
-    confirm_button = InlineKeyboardButton(
-        text='✅ Да, очистить',
-        callback_data='confirm_clear'
-    )
-    cancel_button = InlineKeyboardButton(
-        text='❌ Отмена',
-        callback_data='cancel_clear'
-    )
-    
-    # Добавляем кнопки в клавиатуру в один ряд
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [confirm_button, cancel_button]
-    ]
-    
-    # Создаем объект инлайн-клавиатуры
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    
-    await message.answer(
-        text='⚠️Вы уверены, что хотите удалить ВСЕ каналы?\n'
-             'Это действие необратимо.',
-        reply_markup=markup
+@router.callback_query(F.data == "cancel")
+async def process_cancel_callback(callback: CallbackQuery):
+    await callback.message.edit_text("Операция удаления отменена.")
+    await callback.message.edit_reply_markup(reply_markup=None)
+
+## Удалить все каналы
+@router.callback_query(F.data == "delete_all", UserStates.selecting_channels)
+async def process_delete_all_callback(callback: CallbackQuery, state: FSMContext):
+    # Создаем клавиатуру для подтверждения удаления
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ Да, удалить все", callback_data="confirm_delete_all"),
+        InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete_all")
     )
 
-# Если пользователь подтвердил удаление
-@router.callback_query(F.data == "confirm_clear")
-async def process_clear_confirm(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    
-    result = await db.clear_user_channels(user_id)
-    if result:
-        await callback.message.edit_text(
-            "✅ Все каналы успешно удалены."
-        )
-    else:
-        await callback.message.edit_text(
-            "❌ Произошла ошибка при очистке каналов."
-        )
-
-# если пользователь отменил удаление
-@router.callback_query(F.data == "cancel_clear")
-async def process_clear_cancel(callback: CallbackQuery):
+    # Отправляем сообщение с запросом подтверждения
     await callback.message.edit_text(
-        "Операция отменена. Ваши каналы остались без изменений."
+        "⚠️ Вы уверены, что хотите удалить ВСЕ каналы? Это действие необратимо.",
+        reply_markup=builder.as_markup()
     )
+    await callback.answer()
+
+@router.callback_query(F.data == "confirm_delete_all", UserStates.selecting_channels)
+async def process_confirm_delete_all_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+
+    # Удаляем все каналы из базы данных
+    result = await db.clear_user_channels(user_id)
+    
+    if result:
+        await callback.message.edit_text("✅ Все каналы успешно удалены.")
+    else:
+        await callback.message.edit_text("❌ Произошла ошибка при удалении каналов.")
+
+    # Сбрасываем состояние
+    await state.clear()
+
+@router.callback_query(F.data == "cancel_delete_all", UserStates.selecting_channels)
+async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSMContext):
+    # Возвращаем пользователя к выбору каналов
+    data = await state.get_data()
+    channels = data.get("channels", [])
+
+    # Создаем билдер для inline-клавиатуры
+    builder = InlineKeyboardBuilder()
+
+    # Добавляем кнопки каналов
+    for channel in channels:
+        channel_name = channel
+        builder.button(text=channel_name, callback_data=f"select_{channel_name}")
+
+    # Распределяем кнопки каналов по строкам (по 2 кнопки в строке)
+    builder.adjust(2)
+
+    # Добавляем кнопки действий в отдельные строки
+    builder.row(
+        InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_delete"),
+        InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_delete")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🗑️ Удалить все каналы", callback_data="delete_all")
+    )
+
+    # Обновляем сообщение с клавиатурой
+    await callback.message.edit_text(
+        "Выберите каналы для удаления (нажмите на канал, чтобы отметить его):",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
 
 ############################## receive_news - Получить сводки новостей ############
 
 @router.message(Command("receive_news"))
-async def receive_news_handler(message: Message):
+async def receive_news_handler(message: Message, state: FSMContext):
+
+    # Сбрасываем состояние, если есть активное
+    await state.clear()
 
     user_id = message.from_user.id
     #Marking the user in the db who is CURRENTLY using the bot
@@ -312,7 +406,9 @@ async def receive_news_handler(message: Message):
 
 ############################## stop_news Остановить получение сводки новостей #################
 @router.message(Command("stop_news"))
-async def stop_news_handler(message: Message):
+async def stop_news_handler(message: Message, state: FSMContext):
+    # Сбрасываем состояние, если есть активное
+    await state.clear()
 
     user_id = message.from_user.id
     scraper = TelegramScraper(user_id)
@@ -326,7 +422,10 @@ async def stop_news_handler(message: Message):
 ##############################  FORWARD: Добавить канал через пересылку #################
 
 @router.message(lambda message: message.forward_from_chat and message.forward_from_chat.type == 'channel')
-async def handle_forwarded_message(message: Message):
+async def handle_forwarded_message(message: Message, state: FSMContext):
+    # Сбрасываем состояние, если есть активное
+    await state.clear()
+
     await forwarded_message(message)
 
 # Функция для обработки пересылки
@@ -358,7 +457,10 @@ async def forwarded_message(message: Message):
 
 # Для всех остальных сообщений
 @router.message()
-async def process_other_messages(message: Message):
+async def process_other_messages(message: Message, state: FSMContext):
+    # Сбрасываем состояние, если есть активное
+    await state.clear()
+
     # Если без причины нажать на /cancel
     if message.text == "/cancel":
         await message.answer("Нечего отменять 🤷‍♂️")
