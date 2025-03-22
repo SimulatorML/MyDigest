@@ -178,9 +178,9 @@ async def tutorial_finish_handler(callback: CallbackQuery):
 
 ############################## help - Показать справку #############################
 @router.message(F.text == "Помощь")
-async def handle_help_btn(message: Message, state: FSMContext):
+async def handle_help_btn(message: Message):
     # Reuse /stop_news logic:
-    await process_help_command(message, state)
+    await process_help_command(message)
 
 @router.message(Command(commands="help"))
 async def process_help_command(message: Message):
