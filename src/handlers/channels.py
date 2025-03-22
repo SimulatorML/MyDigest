@@ -580,7 +580,12 @@ async def forwarded_message(message: Message):
 
         # Ожидаем завершения всех задач
         channel_topics = await asyncio.gather(*tasks)
+    except Exception as e:
+        # Присуждаем пустоту если выдает ошибку
+        channel_topics = []
+        logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
 
+    try:
         success = await db.add_user_channels(user_id, [channel], addition_timestamp, channel_topics)
         channels = await db.fetch_user_channels(user_id)
         channels_names = ', '.join([channel["channel_name"] for channel in channels])
@@ -632,7 +637,8 @@ async def async_process_channels_input(message: Message):
             "Пожалуйста, проверьте правильность написания и попробуйте снова."
         )
         return
-
+    
+    # Пробуем определить темы каналов
     try:
         tasks = [
             asyncio.create_task(
@@ -645,9 +651,12 @@ async def async_process_channels_input(message: Message):
 
         # Ожидаем завершения всех задач
         channel_topics = await asyncio.gather(*tasks)
-        # logging.info("\n\nСписок тем каналов для сохранения в БД: %s\n", channel_topics)
+    except Exception as e:
+        # Присуждаем пустоту если выдает ошибку
+        channel_topics = []
+        logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
 
-
+    try:
         channels = await db.fetch_user_channels(user_id)
         channels_names = ', '.join([channel["channel_name"] for channel in channels])
 
