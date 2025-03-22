@@ -248,15 +248,15 @@ async def process_help_command(message: Message):
 #         )
 #         return
 
-#     try:
-#         tasks = [
-#             asyncio.create_task(
-#                 summarizer.determine_channel_topic(
-#                     await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
-#                 )
-#             )
-#             for channel in new_channels
-#         ]
+    # try:
+    #     tasks = [
+    #         asyncio.create_task(
+    #             summarizer.determine_channel_topic(
+    #                 await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
+    #             )
+    #         )
+    #         for channel in new_channels
+    #     ]
 
 #         # Ожидаем завершения всех задач
 #         channel_topics = await asyncio.gather(*tasks)
@@ -559,6 +559,7 @@ async def forwarded_message(message: Message):
     user_id = message.from_user.id
     addition_timestamp = datetime.now().isoformat()
     channel = message.forward_from_chat.username
+    scraper = TelegramScraper(user_id)
 
     if not channel:
         await message.answer("❌ Канал не определен. Пожалуйста, убедитесь, что вы пересылаете сообщение из публичного канала.")
@@ -568,61 +569,37 @@ async def forwarded_message(message: Message):
     if not channel.startswith("@"):
         channel = f"@{channel}"
 
-    success = await db.add_user_channels(user_id, [channel], addition_timestamp)
-    channels = await db.fetch_user_channels(user_id)
-    channels_names = ', '.join([channel["channel_name"] for channel in channels])
+    try:
+        tasks = [
+            asyncio.create_task(
+                summarizer.determine_channel_topic(
+                    await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
+                )
+            )
+        ]
 
-    if success:
-        await message.answer(f"Канал {channel} успешно добавлен! ✔️ \nОбновленный список каналов: {channels_names}")
-        await message.delete()
-    else:
-        await message.answer("Произошла ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
-        await message.delete()
-        return
+        # Ожидаем завершения всех задач
+        channel_topics = await asyncio.gather(*tasks)
 
+        success = await db.add_user_channels(user_id, [channel], addition_timestamp, channel_topics)
+        channels = await db.fetch_user_channels(user_id)
+        channels_names = ', '.join([channel["channel_name"] for channel in channels])
 
-############################## Функция обработки списка каналов #############################
-def process_channel_list(channels_text: str) -> set[str]:
-    """
-    Обрабатывает список каналов из текста и возвращает множество корректных имен каналов.
+        if success:
+            await message.answer(f"Канал {channel} успешно добавлен! ✔️ \nОбновленный список каналов: {channels_names}")
+            await message.delete()
+        else:
+            await message.answer("Произошла ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
+            await message.delete()
+            return
     
-    Args:
-        channels_text (str): Текст со списком каналов
-        
-    Returns:
-        set[str]: Множество обработанных имен каналов
-    """
-    # Разделяем по пробелам и запятым
-    raw_channels = re.split(r'[,\s]+', channels_text)
-    
-    # Обрабатываем каждый канал
-    processed_channels = set()
-    for channel in raw_channels:
-        try:
-            # Очищаем от пробелов
-            channel = channel.strip()
-            if not channel:
-                continue
-                
-            # Извлекаем имя канала из URL
-            channel_name = channel.split('/')[-1].strip()
-            
-            # Убираем все лишние символы
-            channel_name = re.sub(r'[^\w]', '', channel_name)
-            
-            # Добавляем @ в начало
-            if not channel_name.startswith('@'):
-                channel_name = f'@{channel_name}'
-                
-            processed_channels.add(channel_name)
-        except Exception as e:
-            logging.error(f"Error processing channel {channel}: {str(e)}")
-            continue
-            
-    return processed_channels
+    except Exception as e:
+        logging.error("\nError adding channels for user %s: %s\n", user_id, e)
+        await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
 
+##################################### Обработка текста от юзера ####################################
 
-## Обработчик для получения списка каналов
+#################### Обработчик для получения списка каналов
 @router.message(lambda message: message.text and not message.text.startswith('/'))
 async def async_process_channels_input(message: Message):
 
@@ -687,7 +664,7 @@ async def async_process_channels_input(message: Message):
 
 ############################## Перехват обычного текста #############################
 
-# ⚠️⚠️⚠️Должен быть всегда в конце файла, чтобы обрабатывать необработанные сообщения
+# ⚠️⚠️⚠️ этот Хэндлер Должен быть всегда в конце файла, чтобы обрабатывать остальные необработанные сообщения
 # Для всех остальных сообщений
 @router.message()
 async def process_other_messages(message: Message, state: FSMContext):
@@ -713,3 +690,44 @@ async def process_other_messages(message: Message, state: FSMContext):
             "чтобы увидеть список доступных команд или нажмите на Меню."
         )
         return
+
+
+############################## Функция обработки списка каналов #############################
+def process_channel_list(channels_text: str) -> set[str]:
+    """
+    Обрабатывает список каналов из текста и возвращает множество корректных имен каналов.
+    
+    Args:
+        channels_text (str): Текст со списком каналов
+        
+    Returns:
+        set[str]: Множество обработанных имен каналов
+    """
+    # Разделяем по пробелам и запятым
+    raw_channels = re.split(r'[,\s]+', channels_text)
+    
+    # Обрабатываем каждый канал
+    processed_channels = set()
+    for channel in raw_channels:
+        try:
+            # Очищаем от пробелов
+            channel = channel.strip()
+            if not channel:
+                continue
+                
+            # Извлекаем имя канала из URL
+            channel_name = channel.split('/')[-1].strip()
+            
+            # Убираем все лишние символы
+            channel_name = re.sub(r'[^\w]', '', channel_name)
+            
+            # Добавляем @ в начало
+            if not channel_name.startswith('@'):
+                channel_name = f'@{channel_name}'
+                
+            processed_channels.add(channel_name)
+        except Exception as e:
+            logging.error(f"Error processing channel {channel}: {str(e)}")
+            continue
+            
+    return processed_channels
