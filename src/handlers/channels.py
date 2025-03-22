@@ -176,8 +176,12 @@ async def tutorial_finish_handler(callback: CallbackQuery):
         "Обучение завершено! Теперь вы можете использовать команды бота."
     )
 
-
 ############################## help - Показать справку #############################
+@router.message(F.text == "Помощь")
+async def handle_help_btn(message: Message, state: FSMContext):
+    # Reuse /stop_news logic:
+    await process_help_command(message, state)
+
 @router.message(Command(commands="help"))
 async def process_help_command(message: Message):
     await message.answer(
@@ -188,91 +192,6 @@ async def process_help_command(message: Message):
         "/show_channels - показать список ваших каналов\n"
     )
 
-# ############################## add_channels - Добавить каналы ######################
-
-# @router.message(Command(commands="add_channels"))
-# async def process_add_channels_command(message: Message, state: FSMContext):
-#     await message.answer(
-#         f"Жду список каналов 👀\n\n"
-#         f"Формат может быть произвольным.\n"
-#         f"Например: @channel1 https://t.me/channel2 channel3\n\n"
-#         f"Если передумали - нажмите 👉 /cancel"
-#     )
-#     # Устанавливаем состояние ожидания ввода каналов
-#     await state.set_state(UserStates.waiting_for_channels)
-
-# ### Обработчик для получения списка каналов
-# @router.message(UserStates.waiting_for_channels)
-# async def process_channels_input(message: Message, state: FSMContext):
-
-#     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
-#     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
-#         await forwarded_message(message)
-#         await state.clear()
-#         return
-
-#     # Сбрасываем состояние если сообщение - команда
-#     if message.text and message.text.startswith('/'):
-#         await message.answer("Вы отменили добавление каналов 👌")
-#         await state.clear()
-#         return
-
-#     # Если это пересылка от юзера в чате, то пишем что это человек
-#     if message.forward_from and message.from_user:
-#         await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
-#                              "Перешлите пост из канала)\n\n"
-#                              "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
-#         await state.clear()
-#         return
-
-#     user_id = message.from_user.id
-#     channels_text = message.text.strip()
-#     addition_timestamp = datetime.now().isoformat()
-#     scraper = TelegramScraper(user_id)
-
-#     if not channels_text:
-#         await message.answer("Пожалуйста, отправьте корректный список каналов.")
-#         return
-
-#     # Обрабатываем список каналов
-#     new_channels = process_channel_list(channels_text)
-
-#     if not new_channels:
-#         await message.answer("Не удалось распознать ни одного корректного канала. Пожалуйста, попробуйте снова.")
-#         return
-
-#     if not all(re.match(r"^@[A-Za-z0-9_]+$", ch) for ch in new_channels):
-#         await message.answer(
-#             "Названия каналов могут содержать только латинские буквы, цифры и знак подчеркивания. "
-#             "Пожалуйста, проверьте правильность написания и попробуйте снова."
-#         )
-#         return
-
-    # try:
-    #     tasks = [
-    #         asyncio.create_task(
-    #             summarizer.determine_channel_topic(
-    #                 await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
-    #             )
-    #         )
-    #         for channel in new_channels
-    #     ]
-
-#         # Ожидаем завершения всех задач
-#         channel_topics = await asyncio.gather(*tasks)
-#         # logging.info("\n\nСписок тем каналов для сохранения в БД: %s\n", channel_topics)
-
-#         success = await db.add_user_channels(user_id, list(new_channels), addition_timestamp, channel_topics)
-#         if success:
-#             channels_list = ', '.join(new_channels)
-#             await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}")
-#         else:
-#             await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
-#     except Exception as e:
-#         logging.error("\nError adding channels for user %s: %s\n", user_id, e)
-#         await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
-#     finally:
-#         await state.clear()
 
 ############################## show_channels - Показать каналы #####################
 
@@ -287,7 +206,13 @@ async def process_show_channels_command(message: Message):
     else:
         await message.answer("У вас пока нет добавленных каналов.")
 
+
+
 ############################## delete_channels - Удалить каналы #################
+## Реагируем на кнопку "Удалить каналы" из всплывающего меню
+@router.message(F.text == "Удалить каналы")
+async def handle_delete_channels_button(message: Message, state: FSMContext):
+    await process_delete_command(message, state)
 
 # Обработчик для удаления каналов
 @router.message(Command(commands="delete_channels"))
@@ -479,6 +404,11 @@ async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSM
 
 
 ############################## receive_news - Получить сводки новостей ############
+## Реагиуем на кнопку "Получить новости" в inline-клавиатуре
+@router.message(F.text == "Получать новости")
+async def handle_receive_news_btn(message: Message, state: FSMContext):
+    # Reuse /receive_news logic:
+    await receive_news_handler(message, state)
 
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message, state: FSMContext):
@@ -509,12 +439,14 @@ async def receive_news_handler(message: Message, state: FSMContext):
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
         logging.error("Error in receive_news_handler: %s", e)
 
-@router.message(F.text == "Получать новости")
-async def handle_receive_news_btn(message: Message):
-    # Reuse /receive_news logic:
-    await receive_news_handler(message)
 
 ############################## stop_news Остановить получение сводки новостей #################
+
+@router.message(F.text == "Остановить новости")
+async def handle_stop_news_btn(message: Message, state: FSMContext):
+    # Reuse /stop_news logic:
+    await stop_news_handler(message, state)
+
 @router.message(Command("stop_news"))
 async def stop_news_handler(message: Message, state: FSMContext):
     # Сбрасываем состояние, если есть активное
@@ -529,10 +461,6 @@ async def stop_news_handler(message: Message, state: FSMContext):
         "Для повторного получения новостей, пожалуйста, вызовите /receive_news"
     )
 
-@router.message(F.text == "Остановить новости")
-async def handle_stop_news_btn(message: Message):
-    # Reuse /stop_news logic:
-    await stop_news_handler(message)
 
 ##############################  FORWARD: Добавить канал через пересылку #################
 
