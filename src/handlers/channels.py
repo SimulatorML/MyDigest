@@ -512,7 +512,7 @@ async def forwarded_message(message: Message):
     #     # Присуждаем пустоту если выдает ошибку
     #     channel_topics = []
     #     logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
-
+    channel_topics = None
     try:
         success = await db.add_user_channels(user_id, [channel], addition_timestamp, channel_topics)
         channels = await db.fetch_user_channels(user_id)
@@ -583,7 +583,7 @@ async def async_process_channels_input(message: Message):
     #     # Присуждаем пустоту если выдает ошибку
     #     channel_topics = []
         # logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
-
+    channel_topics = None
     try:
         channels = await db.fetch_user_channels(user_id)
         channels_names = ', '.join([channel["channel_name"] for channel in channels])
