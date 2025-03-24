@@ -497,21 +497,21 @@ async def forwarded_message(message: Message):
     if not channel.startswith("@"):
         channel = f"@{channel}"
 
-    try:
-        tasks = [
-            asyncio.create_task(
-                summarizer.determine_channel_topic(
-                    await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
-                )
-            )
-        ]
+    # try:
+    #     tasks = [
+    #         asyncio.create_task(
+    #             summarizer.determine_channel_topic(
+    #                 await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
+    #             )
+    #         )
+    #     ]
 
-        # Ожидаем завершения всех задач
-        channel_topics = await asyncio.gather(*tasks)
-    except Exception as e:
-        # Присуждаем пустоту если выдает ошибку
-        channel_topics = []
-        logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
+    #     # Ожидаем завершения всех задач
+    #     channel_topics = await asyncio.gather(*tasks)
+    # except Exception as e:
+    #     # Присуждаем пустоту если выдает ошибку
+    #     channel_topics = []
+    #     logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
 
     try:
         success = await db.add_user_channels(user_id, [channel], addition_timestamp, channel_topics)
@@ -567,22 +567,22 @@ async def async_process_channels_input(message: Message):
         return
     
     # Пробуем определить темы каналов
-    try:
-        tasks = [
-            asyncio.create_task(
-                summarizer.determine_channel_topic(
-                    await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
-                )
-            )
-            for channel in new_channels
-        ]
+    # try:
+    #     tasks = [
+    #         asyncio.create_task(
+    #             summarizer.determine_channel_topic(
+    #                 await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
+    #             )
+    #         )
+    #         for channel in new_channels
+    #     ]
 
-        # Ожидаем завершения всех задач
-        channel_topics = await asyncio.gather(*tasks)
-    except Exception as e:
-        # Присуждаем пустоту если выдает ошибку
-        channel_topics = []
-        logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
+    #     # Ожидаем завершения всех задач
+    #     channel_topics = await asyncio.gather(*tasks)
+    # except Exception as e:
+    #     # Присуждаем пустоту если выдает ошибку
+    #     channel_topics = []
+        # logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
 
     try:
         channels = await db.fetch_user_channels(user_id)
