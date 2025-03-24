@@ -467,7 +467,7 @@ async def stop_news_handler(message: Message, state: FSMContext):
 @router.message(F.forward_from_chat.func(lambda chat: chat and chat.type == 'channel'))
 async def handle_forwarded_message(message: Message, state: FSMContext):
     # Сбрасываем состояние, если есть активное
-    await state.clear()
+    # await state.clear()
     
     if message.media_group_id:
         data = await state.get_data()
@@ -512,6 +512,7 @@ async def forwarded_message(message: Message):
     #     # Присуждаем пустоту если выдает ошибку
     #     channel_topics = []
     #     logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
+
     channel_topics = None
     try:
         success = await db.add_user_channels(user_id, [channel], addition_timestamp, channel_topics)
