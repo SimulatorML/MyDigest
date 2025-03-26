@@ -3,7 +3,7 @@ import re
 import logging
 from datetime import datetime
 from aiogram import Router
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram import F
 from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -25,6 +25,7 @@ class UserStates(StatesGroup):
     waiting_for_channels = State()
     waiting_for_delete = State()
     selecting_channels = State()
+    waiting_for_interval = State()
 
 
 ############################## Приветствие и тъюториал ###############################
@@ -85,7 +86,7 @@ async def process_start_command(message: Message):
 
     user_exists = await db.fetch_user(user_id)
     if not user_exists:
-        await db.add_user(user_id, username, login_timestamp)
+        await db.add_user(user_id, username, login_timestamp, check_interval=3600)
 
 
     # 2) Prepare the first tutorial screen
@@ -192,6 +193,37 @@ async def process_help_command(message: Message):
         "/show_channels - показать список ваших каналов\n"
     )
 
+############################## set_interval - интервал для получения дайджестов  #####################
+
+@router.message(Command("set_interval"))
+async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
+    args = command.args
+    if not args:
+        await message.answer("Укажите интервал в секундах, например: /set_interval 3600")
+        await state.set_state(UserStates.waiting_for_interval)
+        return
+
+    try:
+        interval = int(args)
+        if interval < 300 or interval > 86400:
+            raise ValueError
+        await db.set_user_interval(message.from_user.id, interval)
+        await message.answer(f"✅ Интервал обновлен: {interval // 60} минут.")
+        await state.clear()
+    except ValueError:
+        await message.answer("❌ Интервал должен быть числом от 300 (5 мин) до 86400 (24 часа).")
+
+@router.message(UserStates.waiting_for_interval)
+async def process_interval_input(message: Message, state: FSMContext):
+    try:
+        interval = int(message.text)
+        if interval < 300 or interval > 86400:
+            raise ValueError
+        await db.set_user_interval(message.from_user.id, interval)
+        await message.answer(f"✅ Интервал обновлен: {interval // 60} минут.")
+        await state.clear()
+    except ValueError:
+        await message.answer("❌ Некорректный формат. Укажите число от 300 до 86400.")
 
 ############################## show_channels - Показать каналы #####################
 
@@ -417,6 +449,9 @@ async def receive_news_handler(message: Message, state: FSMContext):
     await state.clear()
 
     user_id = message.from_user.id
+    # Получаем интервал из БД (по умолчанию 3600)
+    interval = await db.get_user_interval(user_id)
+
     #Marking the user in the db who is CURRENTLY using the bot
     await db.set_user_receiving_news(user_id, True)
     scraper = TelegramScraper(user_id)
@@ -428,12 +463,12 @@ async def receive_news_handler(message: Message, state: FSMContext):
         if scraper.stop_auto_news_check(user_id):
             await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
 
-        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
+        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
         TelegramScraper.running_tasks[user_id] = task
 
         await message.answer(
             f"✅ Фоновая проверка новостей запущена. "
-            f"Вы будете получать обновления каждые {NEWS_CHECK_INTERVAL // 60} минут."
+            f"Вы будете получать обновления каждые {interval // 60} минут."
         )
     except Exception as e:
         await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
@@ -468,7 +503,7 @@ async def stop_news_handler(message: Message, state: FSMContext):
 async def handle_forwarded_message(message: Message, state: FSMContext):
     # Сбрасываем состояние, если есть активное
     # await state.clear()
-    
+
     if message.media_group_id:
         data = await state.get_data()
         processed_groups = data.get("processed_media_groups", set())

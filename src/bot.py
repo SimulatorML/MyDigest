@@ -50,8 +50,9 @@ class DigestBot:
         if active_users:
             for user in active_users.data:
                 user_id = user["user_id"]
+                interval = await db.get_user_interval(user_id)  # Получаем интервал из БД
                 scraper = TelegramScraper(user_id)
-                task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
+                task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
                 TelegramScraper.running_tasks[user_id] = task
 
         logging.info("Bot started successfully and tasks re-launched for active users")

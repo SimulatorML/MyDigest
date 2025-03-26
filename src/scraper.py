@@ -212,6 +212,8 @@ class TelegramScraper:
         :return: None.
         :raises: Exception if the background task fails to start.
         """
+        db = SupabaseDB(supabase)
+        interval = await db.get_user_interval(user_id)
         logging.info("\n🔍 Запускаю фоновую проверку для пользователя %s (интервал %s мин)...\n", user_id, interval // 60)
 
         await self.db.cleanup_old_news()

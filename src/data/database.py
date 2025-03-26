@@ -44,7 +44,7 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
     async def add_user(
-        self, user_id: int, username: str, login_timestamp: str = None
+        self, user_id: int, username: str, login_timestamp: str = None,  check_interval: int = 3600
     ) -> Dict[str, Any]:
         """
         Add or update a user in the database.
@@ -64,6 +64,7 @@ class SupabaseDB:
                         "user_id": user_id,
                         "username": username,
                         "login_timestamp": login_timestamp,
+                        "check_interval": check_interval
                     }
                 )
                 .execute()
@@ -341,4 +342,32 @@ class SupabaseDB:
             return bool(response.data)
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
+
+
+## Добавляем и получаем интервал юзера
+    async def get_user_interval(self, user_id: int) -> int:
+        try:
+            response = (
+                self.client.table("users")
+                .select("check_interval")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return response.data[0].get("check_interval", 3600) if response.data else 3600
+        except Exception as e:
+            self.handle_error(e, user_id, None)
+            return 3600
+
+    async def set_user_interval(self, user_id: int, interval: int) -> bool:
+        try:
+            response = (
+                self.client.table("users")
+                .update({"check_interval": interval})
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return bool(response.data)
+        except Exception as e:
+            self.handle_error(e, user_id, None)
             return False
