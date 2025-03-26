@@ -7,7 +7,7 @@ from src.config import TELEGRAM_BOT_TOKEN
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client, close_telethon_client
-import src.handlers.keyboards as kb
+# import src.handlers.keyboards as kb
 
 db = SupabaseDB(supabase)
 
@@ -51,10 +51,10 @@ class DigestBot:
         if active_users:
             for user in active_users.data:
                 user_id = user["user_id"]
-                await bot.send_message(
-                    chat_id=user_id,
-                    text="Приветик!",
-                    reply_markup=kb.menu)
+                # await bot.send_message(
+                #     chat_id=user_id,
+                #     text="Приветик!",
+                #     reply_markup=kb.menu)
                 interval = await db.get_user_interval(user_id)  # Получаем интервал из БД
                 scraper = TelegramScraper(user_id)
                 task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
