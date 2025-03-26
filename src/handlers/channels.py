@@ -187,6 +187,7 @@ async def handle_help_btn(message: Message):
 async def process_help_command(message: Message):
     await message.answer(
         "Доступные команды:\n"
+        "/set_interval - установить интервал"
         "/delete_channels - удалить каналы\n"
         "/receive_news - показывать сводки новостей за час\n"
         "/stop_news - остановить сводку новостей\n"
@@ -195,37 +196,70 @@ async def process_help_command(message: Message):
 
 ############################## set_interval - интервал для получения дайджестов  #####################
 
+async def _restart_news_check(user_id: int, interval_sec: int, message: Message):
+    """Перезапускает задачу проверки новостей с новым интервалом."""
+    scraper = TelegramScraper(user_id)
+    try:
+        # Останавливаем текущую задачу, если она есть
+        if user_id in TelegramScraper.running_tasks:
+            TelegramScraper.running_tasks[user_id].cancel()
+            del TelegramScraper.running_tasks[user_id]
+            await message.answer("🔄 Перезапускаю фоновую проверку...")
+
+        # Создаем новую задачу с актуальным интервалом
+        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval_sec))
+        TelegramScraper.running_tasks[user_id] = task
+        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.")
+
+    except Exception as e:
+        await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
+        logging.error("Ошибка в _restart_news_check: %s", e)
+
 @router.message(Command("set_interval"))
 async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
     args = command.args
     if not args:
-        await message.answer("Укажите интервал в минутах. Только число")
+        await message.answer("📝 Введите интервал в **минутах** (от 5 до 1440):", parse_mode="Markdown")
         await state.set_state(UserStates.waiting_for_interval)
-        return
+        return  # Критически важно для прерывания обработки
 
     try:
-        interval = int(args)
-        interval *= 60
-        if interval < 300 or interval > 86400:
-            raise ValueError
-        await db.set_user_interval(message.from_user.id, interval)
-        await message.answer(f"✅ Интервал обновлен: {interval // 60} минут.")
+        interval_min = int(args.strip())
+        interval_sec = interval_min * 60
+
+        if interval_min < 5 or interval_min > 1440:
+            raise ValueError("Недопустимый интервал")
+
+        # Сохраняем интервал и перезапускаем задачу
+        await db.set_user_interval(message.from_user.id, interval_sec)
+        await _restart_news_check(message.from_user.id, interval_sec, message)
         await state.clear()
+
     except ValueError:
-        await message.answer("❌ Интервал должен быть числом от 300 (5 мин) до 86400 (24 часа).")
+        await message.answer("❌ Некорректное значение. Введите число от 5 до 1440.")
+    except Exception as e:
+        await message.answer("⚠️ Произошла внутренняя ошибка. Мы уже работаем над этим!")
+        logging.error("Ошибка в set_interval_handler: %s", e)
 
 @router.message(UserStates.waiting_for_interval)
 async def process_interval_input(message: Message, state: FSMContext):
     try:
-        interval = int(message.text)
-        interval *= 60
-        if interval < 300 or interval > 86400:
-            raise ValueError
-        await db.set_user_interval(message.from_user.id, interval)
-        await message.answer(f"✅ Интервал обновлен: {interval // 60} минут.")
+        interval_min = int(message.text.strip())
+        interval_sec = interval_min * 60
+
+        if interval_min < 5 or interval_min > 1440:
+            raise ValueError("Недопустимый интервал")
+
+        # Сохраняем и перезапускаем
+        await db.set_user_interval(message.from_user.id, interval_sec)
+        await _restart_news_check(message.from_user.id, interval_sec, message)
         await state.clear()
+
     except ValueError:
-        await message.answer("❌ Некорректный формат. Укажите число от 300 до 86400.")
+        await message.answer("🔢 Введите **целое число** от 5 до 1440. Например: 60", parse_mode="Markdown")
+    except Exception as e:
+        await message.answer("⚠️ Что-то пошло не так. Попробуйте позже.")
+        logging.error("Ошибка в process_interval_input: %s", e)
 
 ############################## show_channels - Показать каналы #####################
 
