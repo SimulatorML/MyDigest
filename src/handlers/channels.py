@@ -226,7 +226,8 @@ async def set_interval_handler(message: Message, command: CommandObject, state: 
                              "`180` для 3 часов\n",
                              "`300` для 5 часов\n",
                              "`720` для 12 часов\n",
-                             "`1440` для 24 часов\n")
+                             "`1440` для 24 часов\n",
+                             parse_mode="Markdown")
         await state.set_state(UserStates.waiting_for_interval)
         return  # для прерывания обработки
 
@@ -274,7 +275,8 @@ async def process_interval_input(message: Message, state: FSMContext):
                              "`180` для 3 часов\n",
                              "`300` для 5 часов\n",
                              "`720` для 12 часов\n",
-                             "`1440` для 24 часов\n")
+                             "`1440` для 24 часов\n",
+                             parse_mode="Markdown")
     except Exception as e:
         await message.answer("⚠️ Что-то пошло не так. Попробуйте позже.")
         logging.error("Ошибка в process_interval_input: %s", e)
