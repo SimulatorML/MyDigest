@@ -196,6 +196,7 @@ async def process_help_command(message: Message):
 
 ############################## set_interval - интервал для получения дайджестов  #####################
 
+### Функция для перезапуска дайджеста
 async def _restart_news_check(user_id: int, interval_sec: int, message: Message):
     """Перезапускает задачу проверки новостей с новым интервалом."""
     scraper = TelegramScraper(user_id)
@@ -215,13 +216,14 @@ async def _restart_news_check(user_id: int, interval_sec: int, message: Message)
         await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
         logging.error("Ошибка в _restart_news_check: %s", e)
 
+### Устанавливаем интервал
 @router.message(Command("set_interval"))
 async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
     args = command.args
     if not args:
         await message.answer("📝 Введите интервал в **минутах** (от 5 до 1440):", parse_mode="Markdown")
         await state.set_state(UserStates.waiting_for_interval)
-        return  # Критически важно для прерывания обработки
+        return  # для прерывания обработки
 
     try:
         interval_min = int(args.strip())
@@ -230,9 +232,10 @@ async def set_interval_handler(message: Message, command: CommandObject, state: 
         if interval_min < 5 or interval_min > 1440:
             raise ValueError("Недопустимый интервал")
 
+        user_id = message.from_user.id
         # Сохраняем интервал и перезапускаем задачу
-        await db.set_user_interval(message.from_user.id, interval_sec)
-        await _restart_news_check(message.from_user.id, interval_sec, message)
+        await db.set_user_interval(user_id, interval_sec)
+        await _restart_news_check(user_id, interval_sec, message)
         await state.clear()
 
     except ValueError:
@@ -249,10 +252,15 @@ async def process_interval_input(message: Message, state: FSMContext):
 
         if interval_min < 5 or interval_min > 1440:
             raise ValueError("Недопустимый интервал")
+        
+        user_id = message.from_user.id
 
-        # Сохраняем и перезапускаем
-        await db.set_user_interval(message.from_user.id, interval_sec)
-        await _restart_news_check(message.from_user.id, interval_sec, message)
+        # Записываем интервал в БД
+        await db.set_user_interval(user_id, interval_sec)
+        # Обновляем статус юзера на аквтиного в is_receiving_news
+        await db.set_user_receiving_news(user_id, True)
+        # Перезапускаем задачу
+        await _restart_news_check(user_id, interval_sec, message)
         await state.clear()
 
     except ValueError:
@@ -473,42 +481,29 @@ async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSM
 
 ############################## receive_news - Получить сводки новостей ############
 ## Реагиуем на кнопку "Получить новости" в inline-клавиатуре
-@router.message(F.text == "Получать новости")
-async def handle_receive_news_btn(message: Message, state: FSMContext):
-    # Reuse /receive_news logic:
-    await receive_news_handler(message, state)
-
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message, state: FSMContext):
-
-    # Сбрасываем состояние, если есть активное
+    # Сбрасываем состояние
     await state.clear()
-
+    
     user_id = message.from_user.id
-    # Получаем интервал из БД (по умолчанию 3600)
-    interval = await db.get_user_interval(user_id)
-
-    #Marking the user in the db who is CURRENTLY using the bot
-    await db.set_user_receiving_news(user_id, True)
-    scraper = TelegramScraper(user_id)
-
+    
     try:
-        # Инициализируем клиент только при первом запросе
+        # 1. Получаем интервал из БД
+        interval_sec = await db.get_user_interval(user_id)
+        
+        # 2. Помечаем пользователя как активного
+        await db.set_user_receiving_news(user_id, True)
+        
+        # 3. Инициализируем клиент Telethon
         await init_telethon_client()
-
-        if scraper.stop_auto_news_check(user_id):
-            await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
-
-        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
-        TelegramScraper.running_tasks[user_id] = task
-
-        await message.answer(
-            f"✅ Фоновая проверка новостей запущена. "
-            f"Вы будете получать обновления каждые {interval // 60} минут."
-        )
+        
+        # 4. Перезапускаем задачу с текущим интервалом
+        await _restart_news_check(user_id, interval_sec, message)
+        
     except Exception as e:
-        await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
-        logging.error("Error in receive_news_handler: %s", e)
+        await message.answer("❌ Не удалось запустить проверку новостей.")
+        logging.error("Ошибка в receive_news_handler: %s", e)
 
 
 ############################## stop_news Остановить получение сводки новостей #################
