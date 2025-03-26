@@ -187,7 +187,7 @@ async def handle_help_btn(message: Message):
 async def process_help_command(message: Message):
     await message.answer(
         "Доступные команды:\n"
-        "/set_interval - установить интервал"
+        "/set_interval - установить интервал\n"
         "/delete_channels - удалить каналы\n"
         "/receive_news - показывать сводки новостей за час\n"
         "/stop_news - остановить сводку новостей\n"
@@ -495,6 +495,11 @@ async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSM
 
 ############################## receive_news - Получить сводки новостей ############
 ## Реагиуем на кнопку "Получить новости" в inline-клавиатуре
+@router.message(F.text == "Получать новости")
+async def handle_receive_news_btn(message: Message, state: FSMContext):
+    # Reuse /receive_news logic:
+    await receive_news_handler(message, state)
+
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message, state: FSMContext):
     # Сбрасываем состояние
