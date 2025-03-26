@@ -221,7 +221,12 @@ async def _restart_news_check(user_id: int, interval_sec: int, message: Message)
 async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
     args = command.args
     if not args:
-        await message.answer("📝 Введите интервал в **минутах** (от 5 до 1440):", parse_mode="Markdown")
+        await message.answer("📝 Введите интервал в минутах (от 5 до 1440):\n\n",
+                             "`120` для 2 часов\n",
+                             "`180` для 3 часов\n",
+                             "`300` для 5 часов\n",
+                             "`720` для 12 часов\n",
+                             "`1440` для 24 часов\n")
         await state.set_state(UserStates.waiting_for_interval)
         return  # для прерывания обработки
 
@@ -264,7 +269,12 @@ async def process_interval_input(message: Message, state: FSMContext):
         await state.clear()
 
     except ValueError:
-        await message.answer("🔢 Введите **целое число** от 5 до 1440. Например: 60", parse_mode="Markdown")
+        await message.answer("🔢 Введите любое целое число от 5 до 1440. Например:\n\n",
+                             "`120` для 2 часов\n",
+                             "`180` для 3 часов\n",
+                             "`300` для 5 часов\n",
+                             "`720` для 12 часов\n",
+                             "`1440` для 24 часов\n")
     except Exception as e:
         await message.answer("⚠️ Что-то пошло не так. Попробуйте позже.")
         logging.error("Ошибка в process_interval_input: %s", e)

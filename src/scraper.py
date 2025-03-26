@@ -11,7 +11,7 @@ from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER
 from src.summarization import Summarization
 
 TIME_RANGE_24H = timedelta(hours=24)
-DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
+# DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
 
 _telethon_client: TelegramClient | None = None
 _telethon_init_lock = asyncio.Lock()
@@ -142,7 +142,7 @@ class TelegramScraper:
                 break
         return messages
 
-    async def check_new_messages(self, user_id: int, time_range: DEFAULT_TIME_RANGE_HOURS):
+    async def check_new_messages(self, user_id: int, time_range: timedelta):
         """
         Check for new messages from channels associated with the user and send a digest.
 
@@ -220,7 +220,7 @@ class TelegramScraper:
 
         while user_id in TelegramScraper.running_tasks:
             logging.info("\n🔄 Проверка новых сообщений для %s...\n", user_id)
-            await self.check_new_messages(user_id, time_range=DEFAULT_TIME_RANGE_HOURS)  # Проверяем новые сообщения за последний час
+            await self.check_new_messages(user_id, time_range=timedelta(seconds=interval))  # Проверяем новые сообщения за последний час
             logging.info("\n✅ Проверка завершена %s. Следующая через %s минут.\n",
                          datetime.now().strftime('%Y-%m-%d %H:%M:%S'), interval // 60)
 
