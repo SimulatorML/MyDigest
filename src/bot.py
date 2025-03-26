@@ -3,10 +3,11 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from src.commands import ALL_COMMANDS
-from src.config import TELEGRAM_BOT_TOKEN, NEWS_CHECK_INTERVAL
+from src.config import TELEGRAM_BOT_TOKEN, GROUP_LOGS_ID
 from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client, close_telethon_client
+import src.handlers.keyboards as kb
 
 db = SupabaseDB(supabase)
 
@@ -43,7 +44,8 @@ class DigestBot:
         """
         active_users = await db.retrieve_current_users()
         await bot.delete_my_commands()
-        await bot.set_my_commands(ALL_COMMANDS)
+        await bot.set_my_commands(commands=ALL_COMMANDS)
+        await bot.send_message(chat_id=GROUP_LOGS_ID, text="Бот запущен", reply_markup=kb.menu)
         logging.info("Bot started successfully")
 
         await init_telethon_client()
