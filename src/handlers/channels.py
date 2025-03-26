@@ -199,12 +199,13 @@ async def process_help_command(message: Message):
 async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
     args = command.args
     if not args:
-        await message.answer("Укажите интервал в секундах, например: /set_interval 3600")
+        await message.answer("Укажите интервал в минутах. Только число")
         await state.set_state(UserStates.waiting_for_interval)
         return
 
     try:
         interval = int(args)
+        interval *= 60
         if interval < 300 or interval > 86400:
             raise ValueError
         await db.set_user_interval(message.from_user.id, interval)
@@ -217,6 +218,7 @@ async def set_interval_handler(message: Message, command: CommandObject, state: 
 async def process_interval_input(message: Message, state: FSMContext):
     try:
         interval = int(message.text)
+        interval *= 60
         if interval < 300 or interval > 86400:
             raise ValueError
         await db.set_user_interval(message.from_user.id, interval)
