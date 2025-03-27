@@ -198,7 +198,9 @@ class TelegramScraper:
                                             parse_mode="HTML",
                                             disable_web_page_preview=True)
 
-        except TelegramBadRequest as e:
+        except Exception as e:
+            logging.error("Ошибка в check_new_messages: %s", e)
+
             error_message = str(e).lower()
             
             # chat not found
@@ -213,9 +215,8 @@ class TelegramScraper:
                 await self.db.set_user_receiving_news(user_id, False)
                 TelegramScraper.stop_auto_news_check(user_id)
 
-        except Exception as e:
-            logging.error("Ошибка в check_new_messages: %s", e)
-            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+            else:
+                await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 1800):
         """
