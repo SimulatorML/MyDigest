@@ -199,10 +199,19 @@ class TelegramScraper:
                                             disable_web_page_preview=True)
 
         except TelegramBadRequest as e:
-            if "chat not found" in str(e).lower():
+            error_message = str(e).lower()
+            
+            # chat not found
+            if "chat not found" in error_message:
                 logging.error(f"Чат с пользователем {user_id} не найден. ⚠️ Деактивация.")
                 await self.db.set_user_receiving_news(user_id, False)  # Деактивируем
                 TelegramScraper.stop_auto_news_check(user_id)  # Останавливаем задачи
+
+            # При заблокированном боте
+            elif "bot was blocked by the user" in error_message:
+                logging.error(f"Пользователь {user_id} заблокировал бота. ⚠️ Деактивация.")
+                await self.db.set_user_receiving_news(user_id, False)
+                TelegramScraper.stop_auto_news_check(user_id)
 
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
