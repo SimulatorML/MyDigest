@@ -193,7 +193,7 @@ class TelegramScraper:
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
                 await self.bot.send_message(user_id,
-                                            f"📢 <b> Ваш дайджест за последний час: </b>\n\n{digest}",
+                                            f"📢 <b> Ваш дайджест за последние {time_range} минут: </b>\n\n{digest}",
                                             parse_mode="HTML",
                                             disable_web_page_preview=True)
         except Exception as e:
