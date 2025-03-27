@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 #keyboard for bot's menu
 menu = ReplyKeyboardMarkup(keyboard=[
@@ -7,9 +7,3 @@ menu = ReplyKeyboardMarkup(keyboard=[
 ],
                     resize_keyboard=True,
                     input_field_placeholder="Выберете пункт меню или вызовите команду")
-
-# #keyboard for clear channels handler
-# clear_channels = InlineKeyboardMarkup(inline_keyboard=[
-#     [InlineKeyboardButton(text='✅ Да, очистить', callback_data='confirm_clear')],
-#     [InlineKeyboardButton(text='❌ Отмена', callback_data='cancel_clear')]
-# ])
