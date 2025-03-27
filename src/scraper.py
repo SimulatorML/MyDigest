@@ -9,6 +9,7 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
+from aiogram.exceptions import TelegramBadRequest
 
 TIME_RANGE_24H = timedelta(hours=24)
 # DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
@@ -196,6 +197,13 @@ class TelegramScraper:
                                             f"📢 <b> Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут: </b>\n\n{digest}",
                                             parse_mode="HTML",
                                             disable_web_page_preview=True)
+
+        except TelegramBadRequest as e:
+            if "chat not found" in str(e).lower():
+                logging.error(f"Чат с пользователем {user_id} не найден. ⚠️ Деактивация.")
+                await self.db.set_user_receiving_news(user_id, False)  # Деактивируем
+                TelegramScraper.stop_auto_news_check(user_id)  # Останавливаем задачи
+
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
             await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
