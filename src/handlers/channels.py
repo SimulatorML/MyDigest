@@ -717,14 +717,7 @@ async def process_other_messages(message: Message, state: FSMContext):
 def process_channel_list(channels_text: str) -> set[str]:
     """
     Обрабатывает список каналов из текста и возвращает множество корректных имен каналов.
-    
-    Args:
-        channels_text (str): Текст со списком каналов
-        
-    Returns:
-        set[str]: Множество обработанных имен каналов
     """
-    # Регулярное выражение для извлечения имени канала из URL
     url_pattern = re.compile(r'(?:https?://)?t\.me/([^/?]+)')
     processed_channels = set()
 
@@ -735,16 +728,21 @@ def process_channel_list(channels_text: str) -> set[str]:
 
         # Обработка URL
         if url_match := url_pattern.search(channel):
-            channel_name = f"@{url_match.group(1).split('/')[0]}"
-        # Обработка обычных упоминаний
-        elif channel.startswith('@'):
-            channel_name = channel.split('/')[0]
+            channel_part = url_match.group(1).split('/')[0]
+            if channel_part.startswith('@'):
+                channel_name = channel_part
+            else:
+                channel_name = f"@{channel_part}"
+        # Обработка обычных упоминаний и "голых" имен
+        elif re.match(r'^@?[A-Za-z0-9_]{5,}$', channel):
+            channel_name = f"@{channel.lstrip('@')}"
         else:
             continue
 
-        # Валидация имени канала
-        if re.fullmatch(r'@[A-Za-z0-9_]{5,}', channel_name):
+        # Фильтрация по длине и символам
+        if re.fullmatch(r'@[A-Za-z0-9_]{5,32}', channel_name):
             processed_channels.add(channel_name)
 
     return processed_channels
+
  
