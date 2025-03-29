@@ -724,31 +724,27 @@ def process_channel_list(channels_text: str) -> set[str]:
     Returns:
         set[str]: Множество обработанных имен каналов
     """
-    # Разделяем по пробелам и запятым
-    raw_channels = re.split(r'[,\s]+', channels_text)
-    
-    # Обрабатываем каждый канал
+    # Регулярное выражение для извлечения имени канала из URL
+    url_pattern = re.compile(r'(?:https?://)?t\.me/([^/?]+)')
     processed_channels = set()
-    for channel in raw_channels:
-        try:
-            # Очищаем от пробелов
-            channel = channel.strip()
-            if not channel:
-                continue
-                
-            # Извлекаем имя канала из URL
-            channel_name = channel.split('/')[-1].strip()
-            
-            # Убираем все лишние символы
-            channel_name = re.sub(r'[^\w]', '', channel_name)
-            
-            # Добавляем @ в начало
-            if not channel_name.startswith('@'):
-                channel_name = f'@{channel_name}'
-                
-            processed_channels.add(channel_name)
-        except Exception as e:
-            logging.error(f"Error processing channel {channel}: {str(e)}")
+
+    for raw_channel in re.split(r'[,\s]+', channels_text.strip()):
+        channel = raw_channel.strip()
+        if not channel:
             continue
-            
+
+        # Обработка URL
+        if url_match := url_pattern.search(channel):
+            channel_name = f"@{url_match.group(1).split('/')[0]}"
+        # Обработка обычных упоминаний
+        elif channel.startswith('@'):
+            channel_name = channel.split('/')[0]
+        else:
+            continue
+
+        # Валидация имени канала
+        if re.fullmatch(r'@[A-Za-z0-9_]{5,}', channel_name):
+            processed_channels.add(channel_name)
+
     return processed_channels
+ 
