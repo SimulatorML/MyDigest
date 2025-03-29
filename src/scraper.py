@@ -9,7 +9,7 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
-from aiogram.exceptions import TelegramBadRequest
+from telethon.tl.types import Channel, Chat
 
 TIME_RANGE_24H = timedelta(hours=24)
 # DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
@@ -114,6 +114,11 @@ class TelegramScraper:
         client = await init_telethon_client()
         entity = await self.get_entity(entity_name)
         if not entity:
+            return []
+        
+        # Проверяем, является ли сущность каналом или чатом
+        if not isinstance(entity, (Channel, Chat)):
+            logging.warning(f"Сущность {entity_name} не является каналом или чатом. Пропуск.")
             return []
 
         now = datetime.utcnow()
