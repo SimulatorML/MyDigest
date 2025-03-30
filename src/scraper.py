@@ -3,7 +3,6 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from aiogram import Bot
-from aiogram.utils.text import safe_format_entities
 from telethon import TelegramClient, errors
 from typing import List, Dict, Union
 from src.data.database import supabase
@@ -201,20 +200,17 @@ class TelegramScraper:
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
                 
                 # Разбиваем на части сообщение
-                digest_parts = await self._split_digest(digest) # обозначаем части сообщения (part)
-                for index, part in enumerate(digest_parts, 1):
+                try:
+                    digest_parts = await self._split_digest(digest) # обозначаем части сообщения (part)
+                except Exception as e:
+                    logging.error("Ошибка в _split_digest: %s", e)
 
-                    try:
-                        # Проверяем валидность HTML
-                        safe_text = safe_format_entities(part)
-                    except Exception as e:
-                        logging.error(f"Invalid HTML format: {e}")
-                        safe_text = "❌ Ошибка форматирования сообщения"
+                for index, part in enumerate(digest_parts, 1):
 
                     prefix = f"<b>Часть {index} из {len(digest_parts)}</b>\n\n" if len(digest_parts) > 1 else ""
                     await self.bot.send_message(
                         user_id,
-                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n{safe_text}",
+                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n{part}",
                         parse_mode="HTML",
                         disable_web_page_preview=True
                     )
