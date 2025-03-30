@@ -198,12 +198,14 @@ class TelegramScraper:
                 digest = await self.summarizer.cluster_summaries(summaries)
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
-                digest_parts = await self._split_digest(digest)
+                
+                # Разбиваем на части сообщение
+                digest_parts = await self._split_digest(digest) # обозначаем части сообщения (part)
                 for index, part in enumerate(digest_parts, 1):
                     prefix = f"📢 <b>Часть {index} из {len(digest_parts)}</b>\n\n" if len(digest_parts) > 1 else ""
                     await self.bot.send_message(
                         user_id,
-                        f"{prefix}📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n\n{part}",
+                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n\n{part}",
                         parse_mode="HTML",
                         disable_web_page_preview=True
                     )
@@ -330,7 +332,7 @@ class TelegramScraper:
         return messages
 
     ### Сплитер для сообщений
-    async def _split_digest(self, text: str, max_length: int = 4096) -> list[str]:
+    async def _split_digest(self, text: str, max_length: int = 3000) -> list[str]:
         parts = []
         while len(text) > 0:
             part = text[:max_length]
