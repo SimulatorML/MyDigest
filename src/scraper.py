@@ -327,19 +327,12 @@ class TelegramScraper:
         return messages
 
     ### Сплитер для сообщений
-    async def _split_digest(self, text: str, max_length: int = 4090) -> list[str]:
+    async def _split_digest(self, text: str, max_length: int = 4096) -> list[str]:
         parts = []
-        
-        # Делим на равноемерные куски, если большое сообщение
-        if len(text) >= 4090:
-            scale_part = len(text)//max_length + 1
-            max_length = int(max_length/scale_part)
-        else:
-            max_length = max_length
 
         while len(text) > 0:
             part = text[:max_length]
-            last_newline = part.rfind('\n')
+            last_newline = part.rfind('</a>')
             if last_newline > 0 and len(text) > max_length:
                 part = text[:last_newline]
             parts.append(part)
