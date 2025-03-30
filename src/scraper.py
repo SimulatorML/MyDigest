@@ -202,19 +202,14 @@ class TelegramScraper:
                 # Разбиваем на части сообщение
                 digest_parts = await self._split_digest(digest) # обозначаем части сообщения (part)
                 for index, part in enumerate(digest_parts, 1):
-                    prefix = f"📢 <b>Часть {index} из {len(digest_parts)}</b>\n\n" if len(digest_parts) > 1 else ""
+                    prefix = f"<b>Часть {index} из {len(digest_parts)}</b>\n\n" if len(digest_parts) > 1 else ""
                     await self.bot.send_message(
                         user_id,
-                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n\n{part}",
+                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n{part}",
                         parse_mode="HTML",
                         disable_web_page_preview=True
                     )
                     await asyncio.sleep(1)  # Пауза между сообщениями
-
-                # await self.bot.send_message(user_id,
-                #                             f"📢 <b> Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут: </b>\n\n{digest}",
-                #                             parse_mode="HTML",
-                #                             disable_web_page_preview=True)
 
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
@@ -332,8 +327,16 @@ class TelegramScraper:
         return messages
 
     ### Сплитер для сообщений
-    async def _split_digest(self, text: str, max_length: int = 3000) -> list[str]:
+    async def _split_digest(self, text: str, max_length: int = 4090) -> list[str]:
         parts = []
+        
+        # Делим на равноемерные куски, если большое сообщение
+        if len(text) >= 4090:
+            scale_part = len(text)//max_length + 1
+            max_length = int(max_length/scale_part)
+        else:
+            max_length = max_length
+
         while len(text) > 0:
             part = text[:max_length]
             last_newline = part.rfind('\n')
