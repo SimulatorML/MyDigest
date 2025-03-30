@@ -572,7 +572,7 @@ async def forwarded_message(message: Message):
     user_id = message.from_user.id
     addition_timestamp = datetime.now().isoformat()
     channel = message.forward_from_chat.username
-    scraper = TelegramScraper(user_id)
+    # scraper = TelegramScraper(user_id)
 
     if not channel:
         await message.answer("❌ Канал не определен. Пожалуйста, убедитесь, что вы пересылаете сообщение из публичного канала.")
@@ -637,7 +637,7 @@ async def async_process_channels_input(message: Message):
     user_id = message.from_user.id
     channels_text = message.text.strip()
     addition_timestamp = datetime.now().isoformat()
-    scraper = TelegramScraper(user_id)
+    # scraper = TelegramScraper(user_id)
 
     # Обрабатываем список каналов
     new_channels = process_channel_list(channels_text)
@@ -695,7 +695,7 @@ async def process_other_messages(message: Message, state: FSMContext):
     if message.text == "/cancel":
         current_state = await state.get_state()
         if current_state:
-            await state.clear()
+            await state.set_state(None)
             await message.answer("❌ Текущее действие отменено.")
         else:
             await message.answer("Нет активных действий для отмены 🤷")
