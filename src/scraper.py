@@ -163,7 +163,7 @@ class TelegramScraper:
         try:
             user_channels = await self.db.fetch_user_channels(user_id)
             if not user_channels:
-                await self.bot.send_message(user_id, "❌ У вас нет добавленных каналов. Используйте /add_channels.")
+                await self.bot.send_message(user_id, "❌ У вас нет добавленных каналов.")
                 return
 
             now = datetime.utcnow()
@@ -198,10 +198,21 @@ class TelegramScraper:
                 digest = await self.summarizer.cluster_summaries(summaries)
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
-                await self.bot.send_message(user_id,
-                                            f"📢 <b> Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут: </b>\n\n{digest}",
-                                            parse_mode="HTML",
-                                            disable_web_page_preview=True)
+                digest_parts = await self._split_digest(digest)
+                for index, part in enumerate(digest_parts, 1):
+                    prefix = f"📢 <b>Часть {index} из {len(digest_parts)}</b>\n\n" if len(digest_parts) > 1 else ""
+                    await self.bot.send_message(
+                        user_id,
+                        f"{prefix}📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n\n{part}",
+                        parse_mode="HTML",
+                        disable_web_page_preview=True
+                    )
+                    await asyncio.sleep(1)  # Пауза между сообщениями
+
+                # await self.bot.send_message(user_id,
+                #                             f"📢 <b> Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут: </b>\n\n{digest}",
+                #                             parse_mode="HTML",
+                #                             disable_web_page_preview=True)
 
         except Exception as e:
             logging.error("Ошибка в check_new_messages: %s", e)
@@ -317,3 +328,15 @@ class TelegramScraper:
                 logging.error("\nFailed to scrape messages: %s", e)
                 break
         return messages
+
+    ### Сплитер для сообщений
+    async def _split_digest(self, text: str, max_length: int = 4096) -> list[str]:
+        parts = []
+        while len(text) > 0:
+            part = text[:max_length]
+            last_newline = part.rfind('\n')
+            if last_newline > 0 and len(text) > max_length:
+                part = text[:last_newline]
+            parts.append(part)
+            text = text[len(part):].lstrip()
+        return parts
