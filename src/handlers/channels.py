@@ -252,6 +252,13 @@ async def set_interval_handler(message: Message, command: CommandObject, state: 
 
 @router.message(UserStates.waiting_for_interval)
 async def process_interval_input(message: Message, state: FSMContext):
+
+    # Сбрасываем состояние если сообщение - команда
+    if message.text and message.text.startswith('/'):
+        await message.answer("Вы отменили установку интервала 👌")
+        await state.clear()
+        return
+
     try:
         interval_min = int(message.text.strip())
         interval_sec = interval_min * 60
