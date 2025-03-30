@@ -3,6 +3,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from aiogram import Bot
+from aiogram.utils.text import safe_format_entities
 from telethon import TelegramClient, errors
 from typing import List, Dict, Union
 from src.data.database import supabase
@@ -202,10 +203,18 @@ class TelegramScraper:
                 # Разбиваем на части сообщение
                 digest_parts = await self._split_digest(digest) # обозначаем части сообщения (part)
                 for index, part in enumerate(digest_parts, 1):
+
+                    try:
+                        # Проверяем валидность HTML
+                        safe_text = safe_format_entities(part)
+                    except Exception as e:
+                        logging.error(f"Invalid HTML format: {e}")
+                        safe_text = "❌ Ошибка форматирования сообщения"
+
                     prefix = f"<b>Часть {index} из {len(digest_parts)}</b>\n\n" if len(digest_parts) > 1 else ""
                     await self.bot.send_message(
                         user_id,
-                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n{part}",
+                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n{safe_text}",
                         parse_mode="HTML",
                         disable_web_page_preview=True
                     )
@@ -329,12 +338,23 @@ class TelegramScraper:
     ### Сплитер для сообщений
     async def _split_digest(self, text: str, max_length: int = 4096) -> list[str]:
         parts = []
+        while text:
+            # Ищем безопасное место для разбивки, чтобы не разрывать теги
+            if len(text) <= max_length:
+                parts.append(text)
+                break
 
-        while len(text) > 0:
-            part = text[:max_length]
-            last_newline = part.rfind('</a>')
-            if last_newline > 0 and len(text) > max_length:
-                part = text[:last_newline]
-            parts.append(part)
-            text = text[len(part):].lstrip()
+            # Ищем последний закрывающий тег в пределах max_length
+            split_pos = text.rfind('</a>', 0, max_length)
+            if split_pos != -1:
+                split_pos += 4  # Включаем сам тег </a>
+            else:
+                # Если тегов нет, разбиваем по последнему переносу строки
+                split_pos = text.rfind('\n', 0, max_length)
+                if split_pos == -1:
+                    # Если нет переносов, принудительно обрезаем
+                    split_pos = max_length
+
+            parts.append(text[:split_pos])
+            text = text[split_pos:].lstrip()
         return parts
