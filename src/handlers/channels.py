@@ -375,10 +375,11 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
 
         if scraper.stop_auto_news_check(user_id):
             await callback.message.answer("🔄 Перезапускаю фоновую проверку новостей...")
-
+        
+        # по умолчанию interval = 1800, когда новый юзер приходит
         task = asyncio.create_task(
             scraper.start_auto_news_check(
-                user_id, interval=NEWS_CHECK_INTERVAL # проверить
+                user_id
             )
         )
         TelegramScraper.running_tasks[user_id] = task
@@ -386,7 +387,7 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
         # Сообщим, что фоновые дайджесты запущены
         await callback.message.answer(
             "✅ Каналы добавлены, и запущена фоновая проверка новостей. "
-            f"Вы будете получать обновления каждые {NEWS_CHECK_INTERVAL // 60} минут.",
+            f"Вы будете получать обновления каждые {1800 // 60} минут.",
             reply_markup=kb.menu
         )
     except Exception as e:
@@ -430,26 +431,6 @@ async def process_help_command(message: Message):
     )
 
 ############################## set_interval - интервал для получения дайджестов  #####################
-
-### Функция для перезапуска дайджеста
-async def _restart_news_check(user_id: int, interval_sec: int, message: Message):
-    """Перезапускает задачу проверки новостей с новым интервалом."""
-    scraper = TelegramScraper(user_id)
-    try:
-        # Останавливаем текущую задачу, если она есть
-        if user_id in TelegramScraper.running_tasks:
-            TelegramScraper.running_tasks[user_id].cancel()
-            del TelegramScraper.running_tasks[user_id]
-            await message.answer("🔄 Перезапускаю фоновую проверку...")
-
-        # Создаем новую задачу с актуальным интервалом
-        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval_sec))
-        TelegramScraper.running_tasks[user_id] = task
-        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.")
-
-    except Exception as e:
-        await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
-        logging.error("Ошибка в _restart_news_check: %s", e)
 
 ### Устанавливаем интервал
 @router.message(Command("set_interval"))
@@ -979,6 +960,27 @@ async def process_other_messages(message: Message, state: FSMContext):
     # Резервная обработка для всех остальных случаев
     await message.answer("Неизвестная команда. Используйте меню.")
 
+############################## Доп функции ##############################
+
+############################## Функция для перезапуска дайджеста
+async def _restart_news_check(user_id: int, interval_sec: int, message: Message):
+    """Перезапускает задачу проверки новостей с новым интервалом."""
+    scraper = TelegramScraper(user_id)
+    try:
+        # Останавливаем текущую задачу, если она есть
+        if user_id in TelegramScraper.running_tasks:
+            TelegramScraper.running_tasks[user_id].cancel()
+            del TelegramScraper.running_tasks[user_id]
+            await message.answer("🔄 Перезапускаю фоновую проверку...")
+
+        # Создаем новую задачу с актуальным интервалом
+        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval_sec))
+        TelegramScraper.running_tasks[user_id] = task
+        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.")
+
+    except Exception as e:
+        await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
+        logging.error("Ошибка в _restart_news_check: %s", e)
 
 ############################## Функция обработки списка каналов #############################
 def process_channel_list(channels_text: str) -> set[str]:
@@ -1011,5 +1013,3 @@ def process_channel_list(channels_text: str) -> set[str]:
             processed_channels.add(channel_name)
 
     return processed_channels
-
- 
