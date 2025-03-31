@@ -1,8 +1,8 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
 #keyboard for bot's menu
-menu = ReplyKeyboardMarkup(keyboard=
-    [KeyboardButton(text='⭐️ Получать новости'), [KeyboardButton(text='⏲️ Установить интервал')],
+menu = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='⭐️ Получать новости'), KeyboardButton(text='⏲️ Установить интервал')],
     [KeyboardButton(text='🛑 Остановить новости'), KeyboardButton(text='🗑 Удалить каналы')]
 ],
                     resize_keyboard=True,
