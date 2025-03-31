@@ -371,13 +371,13 @@ async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
 
 ############################## set_interval - интервал для получения дайджестов  #####################
 @router.message(F.text == "⏲️ Установить интервал")
-async def handle_interval_btn(message: Message, command: CommandObject, state: FSMContext):
-    await set_interval_handler(message, command, state)
+async def handle_interval_btn(message: Message, state: FSMContext):
+    await set_interval_handler(message, state)
 
 ### Устанавливаем интервал
 @router.message(Command("set_interval"))
 async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
-    args = command.args
+    args = command.args if command else None
     if not args:
         await message.answer("📝 Введите интервал в минутах (от 5 до 1440).\n\n"
                              "Например:\n"
@@ -390,7 +390,10 @@ async def set_interval_handler(message: Message, command: CommandObject, state: 
                              parse_mode="Markdown")
         await state.set_state(UserStates.waiting_for_interval)
         return
+    await process_interval_args(message, args, state)
 
+# Отдельная функция для обработки аргументов
+async def process_interval_args(message: Message, args: str, state: FSMContext):
     try:
         interval_min = int(args.strip())
         interval_sec = interval_min * 60
