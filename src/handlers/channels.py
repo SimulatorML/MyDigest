@@ -370,9 +370,6 @@ async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
 
 
 ############################## set_interval - интервал для получения дайджестов  #####################
-@router.message(F.text == "⏲️ Установить интервал")
-async def handle_interval_btn(message: Message, state: FSMContext):
-    await set_interval_handler(message, state)
 
 ### Устанавливаем интервал
 @router.message(Command("set_interval"))
@@ -412,6 +409,11 @@ async def process_interval_args(message: Message, args: str, state: FSMContext):
     except Exception as e:
         await message.answer("⚠️ Произошла внутренняя ошибка. Мы уже работаем над этим!")
         logging.error("Ошибка в set_interval_handler: %s", e)
+
+## Кнопка в меню
+@router.message(F.text == "⏲️ Установить интервал")
+async def handle_interval_btn(message: Message, state: FSMContext):
+    await process_interval_input(message, state)
 
 @router.message(UserStates.waiting_for_interval)
 async def process_interval_input(message: Message, state: FSMContext):
