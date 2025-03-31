@@ -47,7 +47,7 @@ async def process_start_command(message: Message):
 
     user_exists = await db.fetch_user(user_id)
     if not user_exists:
-        await db.add_user(user_id, username, login_timestamp, check_interval=3600)
+        await db.add_user(user_id, username, login_timestamp) # check_interval=3600 - по умолчанию
 
     await message.answer(text=BOT_DESCRIPTION, reply_markup=kb.greeting_keyboard_inline)
 
