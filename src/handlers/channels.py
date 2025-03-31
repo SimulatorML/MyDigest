@@ -410,10 +410,22 @@ async def process_interval_args(message: Message, args: str, state: FSMContext):
         await message.answer("⚠️ Произошла внутренняя ошибка. Мы уже работаем над этим!")
         logging.error("Ошибка в set_interval_handler: %s", e)
 
-## Кнопка в меню
+# Кнопка в меню
 @router.message(F.text == "⏲️ Установить интервал")
 async def handle_interval_btn(message: Message, state: FSMContext):
-    await process_interval_input(message, state)
+    # Устанавливаем состояние ожидания интервала
+    await message.answer(
+        "📝 Введите интервал в минутах (от 5 до 1440).\n\n"
+        "Например:\n"
+        "`120` для 2 часов\n"
+        "`180` для 3 часов\n"
+        "`300` для 5 часов\n"
+        "`720` для 12 часов\n"
+        "`1440` для 24 часов\n\n"
+        "Для отмены нажмите /cancel",
+        parse_mode="Markdown"
+    )
+    await state.set_state(UserStates.waiting_for_interval)
 
 @router.message(UserStates.waiting_for_interval)
 async def process_interval_input(message: Message, state: FSMContext):
