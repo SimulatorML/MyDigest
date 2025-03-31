@@ -236,7 +236,7 @@ class TelegramScraper:
             else:
                 await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
-    async def start_auto_news_check(self, user_id: int, interval: int = 1800):
+    async def start_auto_news_check(self, user_id: int, interval: int = 3600):
         """
         Start a background task to periodically check for new messages and update the user's digest.
 

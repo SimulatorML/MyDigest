@@ -331,7 +331,7 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
         if scraper.stop_auto_news_check(user_id):
             await callback.message.answer("🔄 Перезапускаю фоновую проверку новостей...")
         
-        # по умолчанию interval = 1800, когда новый юзер приходит
+        # по умолчанию interval = 3600, когда новый юзер приходит
         task = asyncio.create_task(
             scraper.start_auto_news_check(
                 user_id
@@ -342,7 +342,7 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
         # Сообщим, что фоновые дайджесты запущены
         await callback.message.answer(
             "✅ Каналы добавлены, и запущена фоновая проверка новостей. "
-            f"Вы будете получать обновления каждые {1800 // 60} минут.",
+            f"Вы будете получать обновления каждые {3600 // 60} минут.",
             reply_markup=kb.menu
         )
     except Exception as e:
@@ -371,8 +371,8 @@ async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
 
 ############################## set_interval - интервал для получения дайджестов  #####################
 @router.message(F.text == "⏲️ Установить интервал")
-async def handle_interval_btn(message: Message):
-    await set_interval_handler(message)
+async def handle_interval_btn(message: Message, state: FSMContext):
+    await set_interval_handler(message, state)
 
 ### Устанавливаем интервал
 @router.message(Command("set_interval"))
