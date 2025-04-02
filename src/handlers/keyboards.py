@@ -9,5 +9,5 @@ menu = ReplyKeyboardMarkup(keyboard=[
                     input_field_placeholder="Выберете пункт меню или вызовите команду")
 
 greeting_keyboard_inline = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text='Как это сделать?', callback_data='greeting')]
+    [InlineKeyboardButton(text='Начать ❤️', callback_data='greeting')]
 ])
