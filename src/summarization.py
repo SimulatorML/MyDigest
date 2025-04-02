@@ -89,7 +89,8 @@ class Summarization:
                 Ensure the topics are broad and general; limit the number of topics to 5.
                 Do not include bullet points, numbering, or other list formats. Keep it clean and structured as requested.
                 Summaries text: \n{summaries_text}. 
-                Make sure that the resulting output does not exceed 4000 characters.
+                Make sure that the resulting output does not exceed 4000 characters. And ensure that the output is formatted in Russian.
+                The output must not have any additional symbols other than mentioned above.
          '''
         )
         try:
@@ -129,7 +130,7 @@ class Summarization:
             f'''Analyze the list of the channel's latest messages: {formatted_messages}.
                 Determine the main topic of the channel and return it as a brief, specific, and clear formulation.
                 The topic should consist of a maximum of three words (you can use commas or conjunctions if necessary).
-                The topic should be primarily in Russian.
+                The topic should be in Russian.
                 If the messages contain special terms like "AI", "IT", "ML" or company/brand/enterprise names in any language (Russian, Spanish, French, etc.), keep them in their original form if they are part of the final topic of the channel.
                 Do not enclose the topic in quotes.
                 Do not add any explanations or reasoning.

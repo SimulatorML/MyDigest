@@ -1,10 +1,11 @@
 import logging
+import hashlib
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from supabase import create_client, Client
 from supabase import AuthApiError, PostgrestAPIError
 from src.config.config import SUPABASE_URL, SUPABASE_KEY
-import hashlib
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
@@ -17,7 +18,7 @@ class SupabaseErrorHandler:
             ConnectionError: ("ConnectionError", 503),
         }
         msg = f"{error_map.get(type(e))[0]} у пользователя {user_id}: {str(e)}" if user_id else f"{error_map.get(type(e))[0]} у канала {channel_id}: {str(e)}"
-        logging.error(msg)  # В будущем заменить на логирование
+        logging.error(msg)
 
 
 class SupabaseDB:
@@ -44,7 +45,7 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
     async def add_user(
-        self, user_id: int, username: str, login_timestamp: str = None
+        self, user_id: int, username: str, login_timestamp: str = None,  check_interval: int = 3600
     ) -> Dict[str, Any]:
         """
         Add or update a user in the database.
@@ -64,6 +65,7 @@ class SupabaseDB:
                         "user_id": user_id,
                         "username": username,
                         "login_timestamp": login_timestamp,
+                        "check_interval": check_interval
                     }
                 )
                 .execute()
@@ -363,6 +365,7 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
 
+
     async def fetch_channel_id(self, channel_name: str) -> int:
         """
         Ensure that a channel with the given name exists in the database.
@@ -416,3 +419,49 @@ class SupabaseDB:
         hash_bytes = hashlib.sha256(channel_name.encode("utf-8")).digest()[:8]
         hash_int = int.from_bytes(hash_bytes, byteorder='big', signed=False)
         return hash_int % (2**63)  # Ограничение до 63 бит
+
+
+    ## Добавляем и получаем интервал юзера
+    async def get_user_interval(self, user_id: int) -> int:
+        """
+        Retrieve the check interval for a given user.
+
+        :param user_id: The ID of the user to retrieve the check interval for.
+        :return: The check interval in seconds if found, otherwise 3600 (1 hour).
+        :raises: Logs an error if an exception occurs during the database operation.
+        """  
+        try:
+            response = (
+                self.client.table("users")
+                .select("check_interval")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            
+            return response.data[0].get("check_interval", 3600) if response.data else 3600
+        except Exception as e:
+            SupabaseErrorHandler.handle_error(e, user_id, None)
+            return 3600
+
+    async def set_user_interval(self, user_id: int, interval: int) -> bool:
+        """
+        Set the check interval for a given user in the database.
+
+        :param user_id: The ID of the user to set the check interval for.
+        :param interval: The check interval in seconds to set.
+        :return: True if the operation was successful, otherwise handles exceptions.
+        :raises: Logs an error if an exception occurs during the database operation.
+        """
+        try:
+            response = (
+                self.client.table("users")
+                .update({"check_interval": interval})
+                .eq("user_id", user_id)
+                .execute()
+            )
+            
+            return bool(response.data)
+        except Exception as e:
+            SupabaseErrorHandler.handle_error(e, user_id, None)
+            return False
+

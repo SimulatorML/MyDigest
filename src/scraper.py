@@ -9,9 +9,10 @@ from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
 from src.summarization import Summarization
+from telethon.tl.types import Channel, Chat
 
 TIME_RANGE_24H = timedelta(hours=24)
-DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
+# DEFAULT_TIME_RANGE_HOURS = timedelta(hours=1)
 
 _telethon_client: TelegramClient | None = None
 _telethon_init_lock = asyncio.Lock()
@@ -114,6 +115,11 @@ class TelegramScraper:
         entity = await self.get_entity(entity_name)
         if not entity:
             return []
+        
+        # Проверяем, является ли сущность каналом или чатом
+        if not isinstance(entity, (Channel, Chat)):
+            logging.warning(f"Сущность {entity_name} не является каналом или чатом. Пропуск.")
+            return []
 
         now = datetime.utcnow()
         start_time = now - TIME_RANGE_24H
@@ -142,7 +148,7 @@ class TelegramScraper:
                 break
         return messages
 
-    async def check_new_messages(self, user_id: int, time_range: DEFAULT_TIME_RANGE_HOURS):
+    async def check_new_messages(self, user_id: int, time_range: timedelta):
         """
         Check for new messages from channels associated with the user and send a digest.
 
@@ -157,7 +163,7 @@ class TelegramScraper:
         try:
             user_channels = await self.db.fetch_user_channels(user_id)
             if not user_channels:
-                await self.bot.send_message(user_id, "❌ У вас нет добавленных каналов. Используйте /add_channels.")
+                await self.bot.send_message(user_id, "❌ У вас нет добавленных каналов.")
                 return
 
             now = datetime.utcnow()
@@ -192,15 +198,46 @@ class TelegramScraper:
                 digest = await self.summarizer.cluster_summaries(summaries)
                 creation_timestamp = datetime.now().isoformat()
                 await self.db.save_user_digest(user_id, digest, creation_timestamp)
-                await self.bot.send_message(user_id,
-                                            f"📢 <b> Ваш дайджест за последний час: </b>\n\n{digest}",
-                                            parse_mode="HTML",
-                                            disable_web_page_preview=True)
+                
+                # Разбиваем на части сообщение
+                try:
+                    digest_parts = await self._split_digest(digest) # обозначаем части сообщения (part)
+                except Exception as e:
+                    logging.error("Ошибка в _split_digest: %s", e)
+
+                for index, part in enumerate(digest_parts, 1):
+
+                    prefix = f"<b>Часть {index} из {len(digest_parts)}</b>\n\n" if len(digest_parts) > 1 else ""
+                    await self.bot.send_message(
+                        user_id,
+                        f"📢 <b>Ваш дайджест за последние {int(time_range.total_seconds() // 60)} минут:</b>\n{prefix}\n{part}",
+                        parse_mode="HTML",
+                        disable_web_page_preview=True
+                    )
+                    await asyncio.sleep(1)  # Пауза между сообщениями
+
         except Exception as e:
             logging.error("\nОшибка в check_new_messages для пользователя %s: %s\n", user_id, e)
-            await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
-    async def start_auto_news_check(self, user_id: int, interval: int = 1800):
+
+            error_message = str(e).lower()
+            
+            # chat not found
+            if "chat not found" in error_message:
+                logging.error(f"Чат с пользователем {user_id} не найден. ⚠️ Деактивация.")
+                await self.db.set_user_receiving_news(user_id, False)  # Деактивируем
+                TelegramScraper.stop_auto_news_check(user_id)  # Останавливаем задачи
+
+            # При заблокированном боте
+            elif "bot was blocked by the user" in error_message:
+                logging.error(f"Пользователь {user_id} заблокировал бота. ⚠️ Деактивация.")
+                await self.db.set_user_receiving_news(user_id, False)
+                TelegramScraper.stop_auto_news_check(user_id)
+
+            else:
+                await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+
+    async def start_auto_news_check(self, user_id: int, interval: int = 3600):
         """
         Start a background task to periodically check for new messages and update the user's digest.
 
@@ -212,13 +249,15 @@ class TelegramScraper:
         :return: None.
         :raises: Exception if the background task fails to start.
         """
+        db = SupabaseDB(supabase)
+        interval = await db.get_user_interval(user_id)
         logging.info("\n🔍 Запускаю фоновую проверку для пользователя %s (интервал %s мин)...\n", user_id, interval // 60)
 
         await self.db.cleanup_old_news()
 
         while user_id in TelegramScraper.running_tasks:
             logging.info("\n🔄 Проверка новых сообщений для %s...\n", user_id)
-            await self.check_new_messages(user_id, time_range=DEFAULT_TIME_RANGE_HOURS)  # Проверяем новые сообщения за последний час
+            await self.check_new_messages(user_id, time_range=timedelta(seconds=interval))  # Проверяем новые сообщения за последний час
             logging.info("\n✅ Проверка завершена %s. Следующая через %s минут.\n",
                          datetime.now().strftime('%Y-%m-%d %H:%M:%S'), interval // 60)
 
@@ -292,3 +331,27 @@ class TelegramScraper:
                 logging.error("\nFailed to scrape messages: %s", e)
                 break
         return messages
+
+    ### Сплитер для сообщений
+    async def _split_digest(self, text: str, max_length: int = 4096) -> list[str]:
+        parts = []
+        while text:
+            # Ищем безопасное место для разбивки, чтобы не разрывать теги
+            if len(text) <= max_length:
+                parts.append(text)
+                break
+
+            # Ищем последний закрывающий тег в пределах max_length
+            split_pos = text.rfind('</a>', 0, max_length)
+            if split_pos != -1:
+                split_pos += 4  # Включаем сам тег </a>
+            else:
+                # Если тегов нет, разбиваем по последнему переносу строки
+                split_pos = text.rfind('\n', 0, max_length)
+                if split_pos == -1:
+                    # Если нет переносов, принудительно обрезаем
+                    split_pos = max_length
+
+            parts.append(text[:split_pos])
+            text = text[split_pos:].lstrip()
+        return parts

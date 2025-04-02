@@ -1,9 +1,10 @@
 import asyncio
 import re
 import logging
+import src.handlers.keyboards as kb
 from datetime import datetime
 from aiogram import Router
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram import F
 from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -13,9 +14,9 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
-from src.config import NEWS_CHECK_INTERVAL, DAY_RANGE_INTERVAL, MISTRAL_KEY
+from src.config import MISTRAL_KEY
 from src.summarization import Summarization
-import src.handlers.keyboards as kb
+from src.handlers.messages import *
 
 router = Router()
 db = SupabaseDB(supabase)
@@ -25,59 +26,20 @@ class UserStates(StatesGroup):
     waiting_for_channels = State()
     waiting_for_delete = State()
     selecting_channels = State()
+    try_selecting_channels = State()
+    waiting_for_interval = State()
 
 
 ############################## Приветствие и тъюториал ###############################
 
-TUTORIAL_STEPS = [
-    (
-
-'''Привет! 🙂 Я бот для создания сводок новостей из Telegram каналов и чатов.
-
-<b>Для начала добавьте каналы одним из двух способов:</b>
-
-1️⃣ Просто перешлите сюда пост из канала.  
-2️⃣ Или пришлите ссылку на канал или его название в любом формате. 
-
-Например:  
-@channel1 https://t.me/channel2 channel3
-
-Отметим, что отправлять посты или ссылки на каналы можно в любое время.
-        '''.strip()
-    ),
-    (
-
-'''Нажмите на кнопку <b>Получать новости</b>, чтобы сводки новостей приходили каждый час.
-
-После нажатия кнопки в течение 5 минут вам придет первый дайджест. Следующий дайджест придет ровно через час.
-
-Для того чтобы остановить получение новостных сводок, можно нажать на кнопку <b>Остановить новости</b>. Чтобы заново получать новости, достаточно лишь повторного нажатия на кнопку <b>Получать новости</b>.
-        '''.strip()
-    ),
-    (
-        '''
-<b>Если хотите получать сводку по чату</b>, то его можно добавить только через кнопку <b>Добавить каналы</b>.
-
-Каналов и чатов можно добавлять сколько угодно и когда угодно ❤️
-        '''.strip()
-    ),
-    (
-        '''
-Вот список всех команд:
-
-    /receive_news - показывать сводки новостей за час\n
-    /stop_news - остановить сводку новостей\n
-    /delete_channels - удалить каналы\n
-    /show_channels - показать список ваших каналов\n
-    /help - показать список команд
-
-Нажмите «Назад», чтобы вернуться к предыдущему шагу или «Завершить», чтобы закончить.
-        '''.strip()
-    )
-]
-
 @router.message(CommandStart())
 async def process_start_command(message: Message):
+    """
+       Processes the /start command by registering the user (if not exists) and sending a greeting message.
+
+       :param message: Incoming message object that triggered the /start command.
+       :returns: None. Sends a message with BOT_DESCRIPTION and greeting_keyboard_inline.
+    """
 
     user_id = message.from_user.id
     username = message.from_user.username if message.from_user.username else "unknown"
@@ -85,24 +47,39 @@ async def process_start_command(message: Message):
 
     user_exists = await db.fetch_user(user_id)
     if not user_exists:
-        await db.add_user(user_id, username, login_timestamp)
+        await db.add_user(user_id, username, login_timestamp) # check_interval=3600 - по умолчанию
 
+    await message.answer(text=BOT_DESCRIPTION, reply_markup=kb.greeting_keyboard_inline)
 
-    # 2) Prepare the first tutorial screen
+@router.callback_query(lambda c: c.data and c.data == "greeting")
+async def greeting_callback_handler(callback: CallbackQuery):
+    """
+       Handles the callback query when the "greeting" button is pressed and sends the first tutorial step.
+
+       :param callback: CallbackQuery object from the pressed inline button.
+       :returns: None. Sends a new message with the first tutorial step and corresponding keyboard.
+    """
+
+    await callback.answer()
+
+    # Запускаем обучение: отправляем первый шаг туториала.
     step_index = 0
     total_steps = len(TUTORIAL_STEPS)
-
     text = TUTORIAL_STEPS[step_index]
     keyboard = get_tutorial_keyboard(step_index, total_steps)
 
-    await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
-    await message.answer("Вот главное меню:", reply_markup=kb.menu)
+    await callback.message.answer(text=text, reply_markup=keyboard, parse_mode="HTML")
 
 
 def get_tutorial_keyboard(step_index: int, total_steps: int) -> InlineKeyboardMarkup:
     """
-    Inline keyboard helper: returns 'Back' + 'Next' or 'Finish' buttons, depending on the step.
+    Generates an inline keyboard for the tutorial navigation with "Back", "Next", and "Try" buttons.
+
+    :param step_index: Current step index of the tutorial.
+    :param total_steps: Total number of tutorial steps.
+    :returns: InlineKeyboardMarkup object with navigation buttons.
     """
+
     buttons = []
 
     # Show '← Назад' if not on the first screen
@@ -122,21 +99,24 @@ def get_tutorial_keyboard(step_index: int, total_steps: int) -> InlineKeyboardMa
                 callback_data=f"tutorial_next_{step_index}"
             )
         )
-    else:
-        # On the last screen, show 'Завершить'
-        buttons.append(
-            InlineKeyboardButton(
-                text="Завершить",
-                callback_data="tutorial_finish"
-            )
-        )
-    return InlineKeyboardMarkup(inline_keyboard=[buttons])
+    # Adding "Try" button
+    try_button = [InlineKeyboardButton(
+        text="Попробовать",
+        callback_data="try"
+    )]
 
+    return InlineKeyboardMarkup(inline_keyboard=[buttons, try_button])
 
-# ---------- TUTORIAL NAVIGATION CALLBACKS ----------
 
 @router.callback_query(lambda c: c.data and c.data.startswith("tutorial_next_"))
 async def tutorial_next_handler(callback: CallbackQuery):
+    """
+        Handles the callback query for moving to the next tutorial step.
+
+        :param callback: CallbackQuery object containing data with the current step index.
+        :returns: None. Edits the current message with the next tutorial step text and updated keyboard.
+    """
+
     await callback.answer()
 
     data = callback.data  # e.g. "tutorial_next_0"
@@ -152,6 +132,13 @@ async def tutorial_next_handler(callback: CallbackQuery):
 
 @router.callback_query(lambda c: c.data and c.data.startswith("tutorial_back_"))
 async def tutorial_back_handler(callback: CallbackQuery):
+    """
+        Handles the callback query for moving back to the previous tutorial step.
+
+        :param callback: CallbackQuery object containing data with the current step index.
+        :returns: None. Edits the current message with the previous tutorial step text and updated keyboard.
+    """
+
     await callback.answer()
 
     data = callback.data  # e.g. "tutorial_back_2"
@@ -164,34 +151,321 @@ async def tutorial_back_handler(callback: CallbackQuery):
         await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
 
 
-# ---------- 6) Handle "Finish" button ----------
+########################### Добавленная логика "Попробовать" ###########################
 
-@router.callback_query(lambda c: c.data and c.data == "tutorial_finish")
-async def tutorial_finish_handler(callback: CallbackQuery):
+@router.callback_query(lambda c: c.data == "try")
+async def try_handler(callback: CallbackQuery, state: FSMContext):
     """
-    Handles the 'Finish' button on the last step.
+    Handles the "Try" callback by sending a message with a list of example channels for selection.
+
+    :param callback: CallbackQuery object triggered by the "Try" button.
+    :param state: FSMContext for storing selected channels.
+    :returns: None. Sends a message with an inline keyboard of example channels.
+    """
+
+    await callback.answer()
+
+    # Список каналов. Ключ display_name - то, что увидит пользователь на кнопке, link - реальное канал в Telegram
+    example_channels = [
+        {"display_name": "РИА", "link": "@rian_ru"},
+        {"display_name": "Ридовка", "link": "@readovkanews"},
+        {"display_name": "Спортс", "link": "@sportsru"},
+        {"display_name": "Эксплойт",  "link": "@exploitex"},
+        {"display_name": "Москвач", "link": "@moscowach"},
+        {"display_name": "GPTMainNews", "link": "@GPTMainNews"},
+        {"display_name": "Кинопоиск",  "link": "@kinopoisk"},
+        {"display_name": "BOGDANISSIMO", "link": "@bogdanisssimo"},
+    ]
+
+    # Сохраняем их в state
+    await state.update_data(try_channels=example_channels, try_selected=[])
+
+    # Устанавливаем состояние для выбора каналов
+    await state.set_state(UserStates.try_selecting_channels)
+
+    builder = InlineKeyboardBuilder()
+
+    for i, ch in enumerate(example_channels):
+        builder.button(
+            text=ch["display_name"],
+            callback_data=f"try_select_{i}"
+        )
+
+    builder.adjust(2)  # Две кнопки в одной строке
+
+    # Добавим кнопку подтверждения и кнопку "Добавить свой канал"
+    builder.row(
+        InlineKeyboardButton(
+            text="Подтвердить и выслать дайджест",
+            callback_data="try_confirm"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="Добавить свой канал",
+            callback_data="try_add_channel"
+        )
+    )
+
+    # Отправляем сообщение с клавиатурой
+    await callback.message.answer(
+        "Выберите интересующие каналы или добавьте свои:",
+        reply_markup=builder.as_markup()
+    )
+
+@router.callback_query(lambda c: c.data.startswith("try_select_"), UserStates.try_selecting_channels)
+async def try_select_channel_callback(callback: CallbackQuery, state: FSMContext):
+    """
+    Handles channel selection toggling. Updates the list of selected channels and refreshes the inline keyboard.
+
+    :param callback: CallbackQuery object with data indicating the index of the selected channel.
+    :param state: FSMContext for storing and updating selected channels.
+    :returns: None. Edits the current message to update the selection status.
     """
     await callback.answer()
+
+    # Извлекаем индекс канала:
+    index_str = callback.data[len("try_select_"):]
+    index = int(index_str)
+
+    data = await state.get_data()
+
+    example_channels = data.get("try_channels", [])
+    selected_indices = data.get("try_selected", [])
+
+    # если этот индекс уже есть в selected_indices - убираем его, иначе добавляем
+    if index in selected_indices:
+        selected_indices.remove(index)
+    else:
+        selected_indices.append(index)
+
+    # Обновляем в state
+    await state.update_data(try_selected=selected_indices)
+
+    # Теперь заново строим клавиатуру, помечая выбранные каналы "📌"
+    builder = InlineKeyboardBuilder()
+
+    for i, ch in enumerate(example_channels):
+        if i in selected_indices:
+            # Добавляем "📌" к названию
+            builder.button(
+                text=f"📌 {ch['display_name']}",
+                callback_data=f"try_select_{i}"
+            )
+        else:
+            builder.button(
+                text=ch['display_name'],
+                callback_data=f"try_select_{i}"
+            )
+
+    builder.adjust(2)
+    builder.row(
+        InlineKeyboardButton(
+            text="Подтвердить и выслать дайджест",
+            callback_data="try_confirm"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="Добавить свой канал",
+            callback_data="try_add_channel"
+        )
+    )
+
+    # Обновляем предыдущее сообщение
     await callback.message.edit_text(
-        "Обучение завершено! Теперь вы можете использовать команды бота."
+        "Выберите интересующие каналы или добавьте свои:",
+        reply_markup=builder.as_markup()
     )
 
-############################## help - Показать справку #############################
-@router.message(F.text == "Помощь")
-async def handle_help_btn(message: Message):
-    # Reuse /stop_news logic:
-    await process_help_command(message)
+@router.callback_query(lambda c: c.data == "try_confirm", UserStates.try_selecting_channels)
+async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
+    """
+    Processes the confirmation of selected channels:
+      1. Retrieves selected channel indices from the state.
+      2. Converts them into real channel links.
+      3. Adds the channels to the database.
+      4. Starts automatic news fetching.
+      5. Sends a success message.
 
-@router.message(Command(commands="help"))
-async def process_help_command(message: Message):
+    :param callback: CallbackQuery object triggered by pressing the confirmation button.
+    :param state: FSMContext containing the current selection and channel data.
+    :returns: None. Performs database operations and starts background news retrieval.
+    """
+    data = await state.get_data()
+    example_channels = data.get("try_channels", [])
+    selected_indices = data.get("try_selected", [])
+
+    if not selected_indices:
+        await callback.answer("Вы не выбрали ни одного канала!", show_alert=True)
+        return
+
+    # Собираем реальные ссылки
+    links = [example_channels[i]["link"] for i in selected_indices]
+
+    # 1) Добавляем эти каналы в БД для текущего пользователя
+    user_id = callback.from_user.id
+    addition_timestamp = datetime.now().isoformat()
+
+    try:
+        await db.add_user_channels(
+            user_id=user_id,
+            channels=links,
+            addition_timestamp=addition_timestamp,
+            channel_topics=None
+        )
+    except Exception as e:
+        logging.error("Ошибка при добавлении каналов из 'Попробовать': %s", e)
+        await callback.message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
+        return
+
+    # запускаем получение новостей,
+
+    try:
+        await db.set_user_receiving_news(user_id, True)
+        scraper = TelegramScraper(user_id)
+
+        # Инициализируем клиент Telethon (если не инициализирован)
+        await init_telethon_client()
+
+        if scraper.stop_auto_news_check(user_id):
+            await callback.message.answer("🔄 Перезапускаю фоновую проверку новостей...")
+        
+        # по умолчанию interval = 3600, когда новый юзер приходит
+        task = asyncio.create_task(
+            scraper.start_auto_news_check(
+                user_id
+            )
+        )
+        TelegramScraper.running_tasks[user_id] = task
+
+        # Сообщим, что фоновые дайджесты запущены
+        await callback.message.answer(
+            "✅ Каналы добавлены, и запущена фоновая проверка новостей. "
+            f"Вы будете получать обновления каждые {3600 // 60} минут.",
+            reply_markup=kb.menu
+        )
+    except Exception as e:
+        logging.error("Ошибка при запуске фоновой проверки после try_confirm: %s", e)
+        await callback.message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
+        return
+
+    #Сбрасываем состояние FSM
+    await state.clear()
+
+@router.callback_query(lambda c: c.data == "try_add_channel", UserStates.try_selecting_channels)
+async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
+    """
+    Handles the callback when the user chooses to add a custom channel.
+    Prompts the user to send a channel link or forward a message from a public channel.
+
+    :param callback: CallbackQuery object triggered by the "Добавить свой канал" button.
+    :param state: FSMContext (unused in this function, but provided for consistency).
+    :returns: None. Sends a message instructing the user on how to add a channel.
+    """
+    await callback.answer()
+    await callback.message.answer("Хорошо, пришлите ссылку на канал или перешлите пост из открытого канала. \n\n"
+                                  "Для быстрой ориентации пользуйтесь кнопками меню снизу.",
+                                  reply_markup=kb.menu)
+
+
+############################## set_interval - интервал для получения дайджестов  #####################
+
+### Устанавливаем интервал
+@router.message(Command("set_interval"))
+async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
+    args = command.args if command else None
+    if not args:
+        await message.answer("📝 Введите интервал в минутах (от 5 до 1440).\n\n"
+                             "Например:\n"
+                             "`120` для 2 часов\n"
+                             "`180` для 3 часов\n"
+                             "`300` для 5 часов\n"
+                             "`720` для 12 часов\n"
+                             "`1440` для 24 часов\n\n"
+                             "Для отмены нажмите /cancel",
+                             parse_mode="Markdown")
+        await state.set_state(UserStates.waiting_for_interval)
+        return
+    await process_interval_args(message, args, state)
+
+# Отдельная функция для обработки аргументов
+async def process_interval_args(message: Message, args: str, state: FSMContext):
+    try:
+        interval_min = int(args.strip())
+        interval_sec = interval_min * 60
+
+        if interval_min < 5 or interval_min > 1440:
+            raise ValueError("Недопустимый интервал")
+
+        user_id = message.from_user.id
+        # Сохраняем интервал и перезапускаем задачу
+        await db.set_user_interval(user_id, interval_sec)
+        await _restart_news_check(user_id, interval_sec, message)
+        await state.clear()
+
+    except ValueError:
+        await message.answer("❌ Некорректное значение. Введите число от 5 до 1440.")
+    except Exception as e:
+        await message.answer("⚠️ Произошла внутренняя ошибка. Мы уже работаем над этим!")
+        logging.error("Ошибка в set_interval_handler: %s", e)
+
+# Кнопка в меню
+@router.message(F.text == "⏲️ Установить интервал")
+async def handle_interval_btn(message: Message, state: FSMContext):
+    # Устанавливаем состояние ожидания интервала
     await message.answer(
-        "Доступные команды:\n"
-        "/delete_channels - удалить каналы\n"
-        "/receive_news - показывать сводки новостей за час\n"
-        "/stop_news - остановить сводку новостей\n"
-        "/show_channels - показать список ваших каналов\n"
+        "📝 Введите интервал в минутах (от 5 до 1440).\n\n"
+        "Например:\n"
+        "`120` для 2 часов\n"
+        "`180` для 3 часов\n"
+        "`300` для 5 часов\n"
+        "`720` для 12 часов\n"
+        "`1440` для 24 часов\n\n"
+        "Для отмены нажмите /cancel",
+        parse_mode="Markdown"
     )
+    await state.set_state(UserStates.waiting_for_interval)
 
+@router.message(UserStates.waiting_for_interval)
+async def process_interval_input(message: Message, state: FSMContext):
+
+    # Сбрасываем состояние если сообщение - команда
+    if message.text and message.text.startswith('/'):
+        await message.answer("Вы отменили установку интервала 👌")
+        await state.clear()
+        return
+
+    try:
+        interval_min = int(message.text.strip())
+        interval_sec = interval_min * 60
+
+        if interval_min < 5 or interval_min > 1440:
+            raise ValueError("Недопустимый интервал")
+        
+        user_id = message.from_user.id
+
+        # Записываем интервал в БД
+        await db.set_user_interval(user_id, interval_sec)
+        # Обновляем статус юзера на аквтиного в is_receiving_news
+        await db.set_user_receiving_news(user_id, True)
+        # Перезапускаем задачу
+        await _restart_news_check(user_id, interval_sec, message)
+        await state.clear()
+
+    except ValueError:
+        await message.answer("🔢 Введите любое целое число от 5 до 1440.\n\n"
+                             "Например:\n"
+                             "`120` для 2 часов\n"
+                             "`180` для 3 часов\n"
+                             "`300` для 5 часов\n"
+                             "`720` для 12 часов\n"
+                             "`1440` для 24 часов\n\n"
+                             "Для отмены нажмите /cancel",
+                             parse_mode="Markdown")
+    except Exception as e:
+        await message.answer("⚠️ Что-то пошло не так. Попробуйте позже.")
+        logging.error("Ошибка в process_interval_input: %s", e)
 
 ############################## show_channels - Показать каналы #####################
 
@@ -210,7 +484,7 @@ async def process_show_channels_command(message: Message):
 
 ############################## delete_channels - Удалить каналы #################
 ## Реагируем на кнопку "Удалить каналы" из всплывающего меню
-@router.message(F.text == "Удалить каналы")
+@router.message(F.text == "🗑 Удалить каналы")
 async def handle_delete_channels_button(message: Message, state: FSMContext):
     await process_delete_command(message, state)
 
@@ -259,6 +533,14 @@ async def process_delete_command(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith('select_'), UserStates.selecting_channels)
 async def process_select_callback(callback: CallbackQuery, state: FSMContext):
+    """
+    Handles the callback when the user chooses to add a custom channel.
+    Prompts the user to send a channel link or forward a message from a public channel.
+
+    :param callback: CallbackQuery object triggered by the "Добавить свой канал" button.
+    :param state: FSMContext (unused in this function, but provided for consistency).
+    :returns: None. Sends a message instructing the user on how to add a channel.
+    """
     channel_name = callback.data[len('select_'):]  # Извлекаем имя канала из callback_data
 
     # Получаем текущие данные из состояния
@@ -402,47 +684,41 @@ async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSM
     )
     await callback.answer()
 
-
 ############################## receive_news - Получить сводки новостей ############
 ## Реагиуем на кнопку "Получить новости" в inline-клавиатуре
-@router.message(F.text == "Получать новости")
+@router.message(F.text == "⭐️ Получать новости")
 async def handle_receive_news_btn(message: Message, state: FSMContext):
     # Reuse /receive_news logic:
     await receive_news_handler(message, state)
 
 @router.message(Command("receive_news"))
 async def receive_news_handler(message: Message, state: FSMContext):
-
-    # Сбрасываем состояние, если есть активное
+    # Сбрасываем состояние
     await state.clear()
-
+    
     user_id = message.from_user.id
-    #Marking the user in the db who is CURRENTLY using the bot
-    await db.set_user_receiving_news(user_id, True)
-    scraper = TelegramScraper(user_id)
-
+    
     try:
-        # Инициализируем клиент только при первом запросе
+        # 1. Получаем интервал из БД
+        interval_sec = await db.get_user_interval(user_id)
+        
+        # 2. Помечаем пользователя как активного
+        await db.set_user_receiving_news(user_id, True)
+        
+        # 3. Инициализируем клиент Telethon
         await init_telethon_client()
-
-        if scraper.stop_auto_news_check(user_id):
-            await message.answer("🔄 Перезапускаю фоновую проверку новостей...")
-
-        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=NEWS_CHECK_INTERVAL))
-        TelegramScraper.running_tasks[user_id] = task
-
-        await message.answer(
-            f"✅ Фоновая проверка новостей запущена. "
-            f"Вы будете получать обновления каждые {NEWS_CHECK_INTERVAL // 60} минут."
-        )
+        
+        # 4. Перезапускаем задачу с текущим интервалом
+        await _restart_news_check(user_id, interval_sec, message)
+        
     except Exception as e:
-        await message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
-        logging.error("Error in receive_news_handler: %s", e)
+        await message.answer("❌ Не удалось запустить проверку новостей.")
+        logging.error("Ошибка в receive_news_handler: %s", e)
 
 
 ############################## stop_news Остановить получение сводки новостей #################
 
-@router.message(F.text == "Остановить новости")
+@router.message(F.text == "🛑 Остановить новости")
 async def handle_stop_news_btn(message: Message, state: FSMContext):
     # Reuse /stop_news logic:
     await stop_news_handler(message, state)
@@ -458,7 +734,7 @@ async def stop_news_handler(message: Message, state: FSMContext):
     scraper.stop_auto_news_check(user_id)
     await message.answer(
         "Вы остановили получение новостей. "
-        "Для повторного получения новостей, пожалуйста, вызовите /receive_news"
+        "Для повторного получения новостей нажмите на кнопку <b>Получить новости</b>", parse_mode="HTML"
     )
 
 
@@ -502,10 +778,10 @@ async def forwarded_message(message: Message):
                 await message.answer(f"Канал {channel} успешно добавлен! ✔️\n\n Список ваших каналов - команда /show_channels")
                 await message.delete()
             else:
-                await message.answer("Произошла ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
+                await message.answer("Ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
 
         else:
-            messages = await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=20)
+            messages = await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=15)
             channel_topic = await summarizer.determine_channel_topic(messages)
 
             adding_channel = await db.add_single_channel(channel, channel_topic, addition_timestamp)
@@ -535,7 +811,7 @@ async def async_process_channels_input(message: Message):
     if message.forward_from and message.from_user:
         await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
                              "Перешлите пост из канала)\n\n"
-                             "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
+                             "А если вы хотите добавить чат канала, то пришлите ссылку чата или ссылку любого сообщения из чата")
         return
 
     user_id = message.from_user.id
@@ -568,7 +844,7 @@ async def async_process_channels_input(message: Message):
         else:
             topics = []
             for channel in new_channels:
-                messages = await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=20)
+                messages = await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=15)
                 channel_topic = await summarizer.determine_channel_topic(messages)
                 topics.append(channel_topic)
 
@@ -590,66 +866,89 @@ async def async_process_channels_input(message: Message):
 # Для всех остальных сообщений
 @router.message()
 async def process_other_messages(message: Message, state: FSMContext):
-    # Сбрасываем состояние, если есть активное
-    await state.clear()
-
-    # Если без причины нажать на /cancel
+    # Проверка на команду /cancel
     if message.text == "/cancel":
-        await message.answer("Нечего отменять 🤷‍♂️")
+        current_state = await state.get_state()
+        if current_state:
+            await state.set_state(None)
+            await message.answer("❌ Текущее действие отменено.")
+        else:
+            await message.answer("Нет активных действий для отмены 🤷")
         return
 
     if message.forward_from:
         await message.answer("❌Кажется, вы переслали сообщение от человека 🧍, а не пост из группы.\n\n"
                              "Перешлите пост из канала)\n\n"
-                             "А если вы хотите добавить чат канала, то нажмите 👉 /add_channels, а затем вставьте ссылку на чат канала")
+                             "А если вы хотите добавить чат канала, то пришлите ссылку чата или ссылку любого сообщения из чата")
         return
     
         # Если юзер сел попой на телефон
     if  message.text and not message.text.startswith('/'):
         # Если неизвестная команды или текст или пересылка из лички
         await message.answer(
-            "Я понимаю только команды. Используйте /help, "
-            "чтобы увидеть список доступных команд или нажмите на Меню."
+            "⚠️ Я понимаю только команды.\n\n"
+            "Доступные команды:\n"
+            "/set_interval    - ⏲️ установить интервал\n"
+            "/delete_channels - 🗑️ удалить каналы\n"
+            "/receive_news    - 📰 показывать сводки новостей\n"
+            "/stop_news       - ⛔️ остановить сводку новостей\n"
+            "/show_channels   - 📋 показать список ваших каналов\n"
         )
         return
+    
+    # Резервная обработка для всех остальных случаев
+    await message.answer("Неизвестная команда. Используйте меню.")
 
+############################## Доп функции ##############################
+
+############################## Функция для перезапуска дайджеста
+async def _restart_news_check(user_id: int, interval_sec: int, message: Message):
+    """Перезапускает задачу проверки новостей с новым интервалом."""
+    scraper = TelegramScraper(user_id)
+    try:
+        # Останавливаем текущую задачу, если она есть
+        if user_id in TelegramScraper.running_tasks:
+            TelegramScraper.running_tasks[user_id].cancel()
+            del TelegramScraper.running_tasks[user_id]
+            await message.answer("🔄 Перезапускаю фоновую проверку...")
+
+        # Создаем новую задачу с актуальным интервалом
+        task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval_sec))
+        TelegramScraper.running_tasks[user_id] = task
+        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.")
+
+    except Exception as e:
+        await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
+        logging.error("Ошибка в _restart_news_check: %s", e)
 
 ############################## Функция обработки списка каналов #############################
 def process_channel_list(channels_text: str) -> set[str]:
     """
     Обрабатывает список каналов из текста и возвращает множество корректных имен каналов.
-    
-    Args:
-        channels_text (str): Текст со списком каналов
-        
-    Returns:
-        set[str]: Множество обработанных имен каналов
     """
-    # Разделяем по пробелам и запятым
-    raw_channels = re.split(r'[,\s]+', channels_text)
-    
-    # Обрабатываем каждый канал
+    url_pattern = re.compile(r'(?:https?://)?t\.me/([^/?]+)')
     processed_channels = set()
-    for channel in raw_channels:
-        try:
-            # Очищаем от пробелов
-            channel = channel.strip()
-            if not channel:
-                continue
-                
-            # Извлекаем имя канала из URL
-            channel_name = channel.split('/')[-1].strip()
-            
-            # Убираем все лишние символы
-            channel_name = re.sub(r'[^\w]', '', channel_name)
-            
-            # Добавляем @ в начало
-            if not channel_name.startswith('@'):
-                channel_name = f'@{channel_name}'
-                
-            processed_channels.add(channel_name)
-        except Exception as e:
-            logging.error(f"Error processing channel {channel}: {str(e)}")
+
+    for raw_channel in re.split(r'[,\s]+', channels_text.strip()):
+        channel = raw_channel.strip()
+        if not channel:
             continue
-            
+
+        # Обработка URL
+        if url_match := url_pattern.search(channel):
+            channel_part = url_match.group(1).split('/')[0]
+            if channel_part.startswith('@'):
+                channel_name = channel_part
+            else:
+                channel_name = f"@{channel_part}"
+        # Обработка обычных упоминаний и "голых" имен
+        elif re.match(r'^@?[A-Za-z0-9_]{5,}$', channel):
+            channel_name = f"@{channel.lstrip('@')}"
+        else:
+            continue
+
+        # Фильтрация по длине и символам
+        if re.fullmatch(r'@[A-Za-z0-9_]{5,32}', channel_name):
+            processed_channels.add(channel_name)
+
     return processed_channels
