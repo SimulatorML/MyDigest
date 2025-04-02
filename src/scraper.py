@@ -217,7 +217,8 @@ class TelegramScraper:
                     await asyncio.sleep(1)  # Пауза между сообщениями
 
         except Exception as e:
-            logging.error("Ошибка в check_new_messages: %s", e)
+            logging.error("\nОшибка в check_new_messages для пользователя %s: %s\n", user_id, e)
+
 
             error_message = str(e).lower()
             
@@ -264,21 +265,21 @@ class TelegramScraper:
 
     @staticmethod
     def stop_auto_news_check(user_id: int):
-            """
-            Stop the background task checking for new messages for the specified user.
+        """
+        Stop the background task checking for new messages for the specified user.
 
-            This method cancels the background task associated with the user, effectively stopping
-            further periodic message checks and digest updates.
+        This method cancels the background task associated with the user, effectively stopping
+        further periodic message checks and digest updates.
 
-            :param user_id: The unique identifier of the user.
-            :return: True if the background task was successfully stopped, otherwise False.
-            :raises: Exception if stopping the task fails.
-            """
-            if user_id in TelegramScraper.running_tasks:
-                TelegramScraper.running_tasks[user_id].cancel()
-                del TelegramScraper.running_tasks[user_id]
-                return True
-            return False
+        :param user_id: The unique identifier of the user.
+        :return: True if the background task was successfully stopped, otherwise False.
+        :raises: Exception if stopping the task fails.
+        """
+        if user_id in TelegramScraper.running_tasks:
+            TelegramScraper.running_tasks[user_id].cancel()
+            del TelegramScraper.running_tasks[user_id]
+            return True
+        return False
 
     async def scrape_messages_long_term(self, entity_name: str, days: int = 2, limit: int = 1000) -> List[Dict[str, Union[int, str, datetime]]]:
         """

@@ -474,7 +474,7 @@ async def process_show_channels_command(message: Message):
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
-    if channels is not None:
+    if channels:
         channel_names = [channel["channel_name"] for channel in channels]
         await message.answer(f"Ваши каналы:\n{', '.join(channel_names)}")
     else:
@@ -599,7 +599,7 @@ async def process_confirm_delete_callback(callback: CallbackQuery, state: FSMCon
 
     # Удаляем выбранные каналы из базы данных
     result = await db.delete_user_channels(user_id, selected_channels)
-    
+
     if result:
         await callback.message.edit_text(f"Каналы успешно удалены: {', '.join(selected_channels)}")
     else:
@@ -642,7 +642,7 @@ async def process_confirm_delete_all_callback(callback: CallbackQuery, state: FS
 
     # Удаляем все каналы из базы данных
     result = await db.clear_user_channels(user_id)
-    
+
     if result:
         await callback.message.edit_text("✅ Все каналы успешно удалены.")
     else:
@@ -752,59 +752,49 @@ async def handle_forwarded_message(message: Message, state: FSMContext):
         if message.media_group_id in processed_groups:
             await message.delete()
             return
-        else:
-            processed_groups.add(message.media_group_id)
-            await state.update_data(processed_media_groups=processed_groups)
+
+        processed_groups.add(message.media_group_id)
+        await state.update_data(processed_media_groups=processed_groups)
     await forwarded_message(message)
 
-# Функция для обработки пересылки
 async def forwarded_message(message: Message):
-    
+
     user_id = message.from_user.id
     addition_timestamp = datetime.now().isoformat()
     channel = message.forward_from_chat.username
-    # scraper = TelegramScraper(user_id)
+    scraper = TelegramScraper(user_id)
 
     if not channel:
         await message.answer("❌ Канал не определен. Пожалуйста, убедитесь, что вы пересылаете сообщение из публичного канала.")
-        await message.delete()
         return
 
-    if not channel.startswith("@"):
-        channel = f"@{channel}"
+    channel = f"@{channel}" if not channel.startswith("@") else channel
 
-    # try:
-    #     tasks = [
-    #         asyncio.create_task(
-    #             summarizer.determine_channel_topic(
-    #                 await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
-    #             )
-    #         )
-    #     ]
-
-    #     # Ожидаем завершения всех задач
-    #     channel_topics = await asyncio.gather(*tasks)
-    # except Exception as e:
-    #     # Присуждаем пустоту если выдает ошибку
-    #     channel_topics = []
-    #     logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
-
-    channel_topics = None
     try:
-        success = await db.add_user_channels(user_id, [channel], addition_timestamp, channel_topics)
-        channels = await db.fetch_user_channels(user_id)
+        exist_channel_id = await db.fetch_channel_id(channel)
+        if exist_channel_id:
+            linking_user_channel = await db.link_user_single_channel(user_id, exist_channel_id, addition_timestamp)
+            if linking_user_channel:
+                await message.answer(f"Канал {channel} успешно добавлен! ✔️\n\n Список ваших каналов - команда /show_channels")
+                await message.delete()
+            else:
+                await message.answer("Ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
 
-        if success:
-            await message.answer(f"Канал {channel} успешно добавлен! ✔️\n\n Чтобы проверить, какие каналы уже добавлены, вызовите команду /show_channels")
-            await message.delete()
         else:
-            await message.answer("Произошла ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
-            await message.delete()
-            return
-    
+            messages = await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=15)
+            channel_topic = await summarizer.determine_channel_topic(messages)
+
+            adding_channel = await db.add_single_channel(channel, channel_topic, addition_timestamp)
+            if adding_channel:
+                channel_id = await db.fetch_channel_id(channel)
+                await db.link_user_single_channel(user_id, channel_id, addition_timestamp)
+                await message.answer(f"Канал {channel} успешно добавлен! ✔️\n\n Список ваших каналов - команда /show_channels")
+                await message.delete()
+            else:
+                await message.answer("Ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
     except Exception as e:
-        logging.error("\nError adding channels for user %s: %s\n", user_id, e)
-        await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
+        logging.error("\nError adding channel for user %s: %s\n", user_id, e)
+        await message.answer("Произошла ошибка при добавлении канала. Пожалуйста, попробуйте позже.")
 
 ##################################### Обработка текста от юзера ####################################
 
@@ -827,7 +817,7 @@ async def async_process_channels_input(message: Message):
     user_id = message.from_user.id
     channels_text = message.text.strip()
     addition_timestamp = datetime.now().isoformat()
-    # scraper = TelegramScraper(user_id)
+    scraper = TelegramScraper(user_id)
 
     # Обрабатываем список каналов
     new_channels = process_channel_list(channels_text)
@@ -841,35 +831,30 @@ async def async_process_channels_input(message: Message):
             "Пожалуйста, проверьте правильность написания и попробуйте снова."
         )
         return
-    
-    # Пробуем определить темы каналов
-    # try:
-    #     tasks = [
-    #         asyncio.create_task(
-    #             summarizer.determine_channel_topic(
-    #                 await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=10)
-    #             )
-    #         )
-    #         for channel in new_channels
-    #     ]
 
-    #     # Ожидаем завершения всех задач
-    #     channel_topics = await asyncio.gather(*tasks)
-    # except Exception as e:
-    #     # Присуждаем пустоту если выдает ошибку
-    #     channel_topics = []
-        # logging.error("\nError determine_channel_topic for user %s: %s\n", user_id, e)
-    channel_topics = None
     try:
-        channels = await db.fetch_user_channels(user_id)
-        channels_names = ', '.join([channel["channel_name"] for channel in channels])
+        new_channels = list(new_channels)
 
-        success = await db.add_user_channels(user_id, list(new_channels), addition_timestamp, channel_topics)
-        if success:
-            channels_list = ', '.join(new_channels)
-            await message.answer(f"Каналы успешно добавлены 👍\n{channels_list}. Обновленный список каналов: {channels_names}")
+        channel_ids = await db.fetch_channel_ids(new_channels)
+        if channel_ids:
+            await db.link_user_channels(user_id, channel_ids, addition_timestamp)
+            new_channels_list = ', '.join(new_channels)
+            await message.answer(f"Каналы {new_channels_list} успешно добавлены! ✔️\n\n Список ваших каналов - команда /show_channels")
+
         else:
-            await message.answer("Произошла ошибка при добавлении каналов. Попробуйте еще раз.")
+            topics = []
+            for channel in new_channels:
+                messages = await scraper.scrape_messages_long_term(channel, days=DAY_RANGE_INTERVAL, limit=15)
+                channel_topic = await summarizer.determine_channel_topic(messages)
+                topics.append(channel_topic)
+
+            await db.add_channels(new_channels, topics, addition_timestamp)
+            channel_ids = await db.fetch_channel_ids(new_channels)
+            await db.link_user_channels(user_id, channel_ids, addition_timestamp)
+
+            new_channels_list = ', '.join(new_channels)
+            await message.answer(f"Каналы {new_channels_list} успешно добавлены! ✔️\n\n Список ваших каналов - команда /show_channels")
+
     except Exception as e:
         logging.error("\nError adding channels for user %s: %s\n", user_id, e)
         await message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")

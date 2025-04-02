@@ -99,7 +99,7 @@ class Summarization:
             logging.error("Error during clustering: %s", e)
             return "Failed to produce the final digest."
 
-    async def determine_channel_topic(self, messages: List[Dict[str, Union[str, int]]]) -> str:
+    async def determine_channel_topic(self, messages: List[Dict[str, Union[str, int]]]) -> List[str]:
         """
         Determines channel topics based on recent posts.
 
@@ -112,7 +112,7 @@ class Summarization:
         :returns: A string with the determined channel topic.
         """
         if not messages:
-            return "Общая тематика"
+            return ["Общая тематика"]
 
         # Если сообщения уже в нужном формате, используем их
         if all(key in messages[0] for key in ["channel", "message", "message_id"]):
@@ -139,7 +139,9 @@ class Summarization:
         )
 
         try:
-            return await self._mistral_request(prompt)
+            raw_topic = await self._mistral_request(prompt)
+            list_topic = list(map(str.strip, raw_topic.split(',')))
+            return list_topic
         except Exception as e:
-            logging.error("Error determining channel topic: %s", e)
+            logging.error("\nError determining channel topic: %s\n", e)
             return "Failed to determine channel topic."
