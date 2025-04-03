@@ -14,13 +14,14 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
-from src.config import MISTRAL_KEY
+from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL
 from src.summarization import Summarization
-from src.handlers.messages import *
+from src.handlers.messages import BOT_DESCRIPTION, TUTORIAL_STEPS
 
 router = Router()
 db = SupabaseDB(supabase)
 summarizer = Summarization(api_key=MISTRAL_KEY)
+
 
 class UserStates(StatesGroup):
     waiting_for_channels = State()
@@ -47,9 +48,10 @@ async def process_start_command(message: Message):
 
     user_exists = await db.fetch_user(user_id)
     if not user_exists:
-        await db.add_user(user_id, username, login_timestamp) # check_interval=3600 - по умолчанию
+        await db.add_user(user_id, username, login_timestamp)  # check_interval=3600 - по умолчанию
 
     await message.answer(text=BOT_DESCRIPTION, reply_markup=kb.greeting_keyboard_inline)
+
 
 @router.callback_query(lambda c: c.data and c.data == "greeting")
 async def greeting_callback_handler(callback: CallbackQuery):
@@ -303,17 +305,14 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
     # Собираем реальные ссылки
     links = [example_channels[i]["link"] for i in selected_indices]
 
-    # 1) Добавляем эти каналы в БД для текущего пользователя
+    # Связываем эти каналы с текущим пользователем
     user_id = callback.from_user.id
     addition_timestamp = datetime.now().isoformat()
 
     try:
-        await db.add_user_channels(
-            user_id=user_id,
-            channels=links,
-            addition_timestamp=addition_timestamp,
-            channel_topics=None
-        )
+        channel_ids = await db.fetch_channel_ids(links)
+        if channel_ids:
+            await db.link_user_channels(user_id, channel_ids, addition_timestamp)
     except Exception as e:
         logging.error("Ошибка при добавлении каналов из 'Попробовать': %s", e)
         await callback.message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
@@ -330,7 +329,7 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
 
         if scraper.stop_auto_news_check(user_id):
             await callback.message.answer("🔄 Перезапускаю фоновую проверку новостей...")
-        
+
         # по умолчанию interval = 3600, когда новый юзер приходит
         task = asyncio.create_task(
             scraper.start_auto_news_check(
@@ -341,7 +340,7 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
 
         # Сообщим, что фоновые дайджесты запущены
         await callback.message.answer(
-            "✅ Каналы добавлены, и запущена фоновая проверка новостей. "
+            "✅ Каналы добавлены и запущена фоновая проверка новостей. "
             f"Вы будете получать обновления каждые {3600 // 60} минут.",
             reply_markup=kb.menu
         )
@@ -350,10 +349,10 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
         return
 
-    #Сбрасываем состояние FSM
+    # Сбрасываем состояние FSM
     await state.clear()
 
-@router.callback_query(lambda c: c.data == "try_add_channel", UserStates.try_selecting_channels)
+@router.callback_query(lambda c: c.data == "try_add_channel")
 async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
     """
     Handles the callback when the user chooses to add a custom channel.
@@ -365,7 +364,7 @@ async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
     """
     await callback.answer()
     await callback.message.answer("Хорошо, пришлите ссылку на канал или перешлите пост из открытого канала. \n\n"
-                                  "Для быстрой ориентации пользуйтесь кнопками меню снизу.",
+                                  "Для быстрой ориентации пользуйтесь кнопками меню снизу. 👇",
                                   reply_markup=kb.menu)
 
 
@@ -442,7 +441,7 @@ async def process_interval_input(message: Message, state: FSMContext):
 
         if interval_min < 5 or interval_min > 1440:
             raise ValueError("Недопустимый интервал")
-        
+
         user_id = message.from_user.id
 
         # Записываем интервал в БД
@@ -695,22 +694,22 @@ async def handle_receive_news_btn(message: Message, state: FSMContext):
 async def receive_news_handler(message: Message, state: FSMContext):
     # Сбрасываем состояние
     await state.clear()
-    
+
     user_id = message.from_user.id
-    
+
     try:
         # 1. Получаем интервал из БД
         interval_sec = await db.get_user_interval(user_id)
-        
+
         # 2. Помечаем пользователя как активного
         await db.set_user_receiving_news(user_id, True)
-        
+
         # 3. Инициализируем клиент Telethon
         await init_telethon_client()
-        
+
         # 4. Перезапускаем задачу с текущим интервалом
         await _restart_news_check(user_id, interval_sec, message)
-        
+
     except Exception as e:
         await message.answer("❌ Не удалось запустить проверку новостей.")
         logging.error("Ошибка в receive_news_handler: %s", e)
@@ -756,6 +755,7 @@ async def handle_forwarded_message(message: Message, state: FSMContext):
         processed_groups.add(message.media_group_id)
         await state.update_data(processed_media_groups=processed_groups)
     await forwarded_message(message)
+
 
 async def forwarded_message(message: Message):
 
@@ -901,6 +901,7 @@ async def process_other_messages(message: Message, state: FSMContext):
 
 ############################## Доп функции ##############################
 
+
 ############################## Функция для перезапуска дайджеста
 async def _restart_news_check(user_id: int, interval_sec: int, message: Message):
     """Перезапускает задачу проверки новостей с новым интервалом."""
@@ -920,6 +921,7 @@ async def _restart_news_check(user_id: int, interval_sec: int, message: Message)
     except Exception as e:
         await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
         logging.error("Ошибка в _restart_news_check: %s", e)
+
 
 ############################## Функция обработки списка каналов #############################
 def process_channel_list(channels_text: str) -> set[str]:
