@@ -45,8 +45,8 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
     async def add_user(
-        self, user_id: int, username: str, login_timestamp: str = None,  check_interval: int = 3600
-    ) -> Dict[str, Any]:
+        self, user_id: int, username: str, login_timestamp: str = None, check_interval: int = 3600
+    ) -> None:
         """
         Add or update a user in the database.
 
@@ -54,27 +54,19 @@ class SupabaseDB:
         :param username: The username of the user to add or update.
         :param login_timestamp: The timestamp of the user's last login.
                                  Defaults to the current time if not provided.
-        :return: The response data from the database operation.
+        :param check_interval: Digest sending interval in seconds, defaults to 3600
+        :return: None
         :raises: SupabaseErrorHandler if an error occurs.
         """
         try:
-            response = (
-                self.client.table("users")
-                .upsert(
-                    {
-                        "user_id": user_id,
-                        "username": username,
-                        "login_timestamp": login_timestamp,
-                        "check_interval": check_interval
-                    }
-                )
-                .execute()
-            )
-            if response.data:
-                logging.info("Пользователь успешно добавлен или обновлен.")
-            else:
-                logging.info("Ошибка при добавлении пользователя: %s", response.data)
-            return response.data
+            self.client.table("users").upsert(
+                {
+                    "user_id": user_id,
+                    "username": username,
+                    "login_timestamp": login_timestamp,
+                    "check_interval": check_interval
+                }
+                ).execute()
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
@@ -365,7 +357,6 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
 
-
     async def fetch_channel_id(self, channel_name: str) -> int:
         """
         Ensure that a channel with the given name exists in the database.
@@ -420,8 +411,7 @@ class SupabaseDB:
         hash_int = int.from_bytes(hash_bytes, byteorder='big', signed=False)
         return hash_int % (2**63)  # Ограничение до 63 бит
 
-
-    ## Добавляем и получаем интервал юзера
+    # Добавляем и получаем интервал юзера
     async def get_user_interval(self, user_id: int) -> int:
         """
         Retrieve the check interval for a given user.
@@ -437,7 +427,7 @@ class SupabaseDB:
                 .eq("user_id", user_id)
                 .execute()
             )
-            
+
             return response.data[0].get("check_interval", 3600) if response.data else 3600
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
@@ -459,9 +449,8 @@ class SupabaseDB:
                 .eq("user_id", user_id)
                 .execute()
             )
-            
+
             return bool(response.data)
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
-
