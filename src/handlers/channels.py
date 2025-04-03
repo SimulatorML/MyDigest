@@ -286,7 +286,7 @@ async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
     Processes the confirmation of selected channels:
       1. Retrieves selected channel indices from the state.
       2. Converts them into real channel links.
-      3. Adds the channels to the database.
+      3. Links channels to the user.
       4. Starts automatic news fetching.
       5. Sends a success message.
 
@@ -373,6 +373,20 @@ async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
 ### Устанавливаем интервал
 @router.message(Command("set_interval"))
 async def set_interval_handler(message: Message, command: CommandObject, state: FSMContext):
+    """
+    Handles the /set_interval command to set the interval for receiving digests.
+
+    This function prompts the user to input an interval in minutes if not provided
+    as arguments. It then processes the arguments to validate and set the interval.
+    If the interval is valid, it updates the user's interval setting and restarts the
+    news checking task with the new interval.
+
+    :param message: The incoming message object containing the command.
+    :param command: The CommandObject containing parsed command arguments.
+    :param state: The FSMContext for managing the state of the conversation.
+    :returns: None. Sends messages to the user and updates their interval settings.
+    """
+
     args = command.args if command else None
     if not args:
         await message.answer("📝 Введите интервал в минутах (от 5 до 1440).\n\n"
@@ -388,8 +402,25 @@ async def set_interval_handler(message: Message, command: CommandObject, state: 
         return
     await process_interval_args(message, args, state)
 
+
 # Отдельная функция для обработки аргументов
 async def process_interval_args(message: Message, args: str, state: FSMContext):
+    """
+    Process and validate interval arguments for setting the user's news digest interval.
+
+    This function parses the provided interval argument, converts it to seconds, and
+    validates that it falls within the acceptable range. If valid, it updates the user's
+    interval settings in the database and restarts the news checking task. If invalid,
+    it prompts the user for a correct value.
+
+    :param message: The incoming message object containing the command.
+    :param args: The string arguments from the command representing the interval in minutes.
+    :param state: The FSMContext for managing the state of the conversation.
+    :returns: None. Sends messages to the user and updates their interval settings.
+    :raises: ValueError if the interval is out of the allowed range.
+    :raises: General exceptions are logged and a user-friendly error message is sent.
+    """
+
     try:
         interval_min = int(args.strip())
         interval_sec = interval_min * 60
@@ -428,7 +459,15 @@ async def handle_interval_btn(message: Message, state: FSMContext):
 
 @router.message(UserStates.waiting_for_interval)
 async def process_interval_input(message: Message, state: FSMContext):
+    """
+    Handles the message containing the interval for setting the user's news digest interval.
 
+    This function processes the user's input as a string, parses it into an integer, and validates
+    that it falls within the acceptable range. If valid, it updates the user's interval settings in
+    the database and restarts the news checking task. If invalid, it prompts the user for a correct
+    value. If the message is a command, it resets the state to the default state and sends a message
+    indicating that the interval setup was cancelled.
+    """
     # Сбрасываем состояние если сообщение - команда
     if message.text and message.text.startswith('/'):
         await message.answer("Вы отменили установку интервала 👌")
@@ -470,6 +509,18 @@ async def process_interval_input(message: Message, state: FSMContext):
 
 @router.message(Command(commands="show_channels"))
 async def process_show_channels_command(message: Message):
+    """
+    Handles the /show_channels command to display the user's subscribed channels.
+
+    This function fetches the list of channels associated with the user from the database.
+    If the user has channels, it sends a message listing their channel names. If not, it
+    informs the user that they have no added channels.
+
+    :param message: The incoming message object containing the command.
+    :type message: Message
+    :returns: None. Sends a message listing the user's channels or indicating none are added.
+    """
+
     user_id = message.from_user.id
     channels = await db.fetch_user_channels(user_id)
 
@@ -490,6 +541,16 @@ async def handle_delete_channels_button(message: Message, state: FSMContext):
 # Обработчик для удаления каналов
 @router.message(Command(commands="delete_channels"))
 async def process_delete_command(message: Message, state: FSMContext):
+    """
+    Handles the /delete_channels command and presents the user with a list of their channels to delete.
+
+    If the user has no channels, it sends a message indicating that. Otherwise, it sets the user's state to
+    `UserStates.selecting_channels` and sends a message with an inline keyboard where each channel is
+    a button. The user can then select channels to delete by clicking on them. The selected channels are
+    stored in the user's state. The user can confirm the deletion by clicking on the "Подтвердить" button
+    or cancel by clicking on the "Отмена" button. If the user wants to delete all channels at once, they
+    can click on the "Удалить все каналы" button.
+    """
     # Сбрасываем состояние, если есть активное
     await state.clear()
 
@@ -758,6 +819,19 @@ async def handle_forwarded_message(message: Message, state: FSMContext):
 
 
 async def forwarded_message(message: Message):
+    """
+    Processes a forwarded message to add a channel for the user.
+
+    This function handles messages forwarded from public channels. It attempts to
+    link the channel to the user if it already exists in the database, or adds
+    the channel if it is not present. The function provides feedback to the user
+    on the success or failure of the operation.
+
+    :param message: The message object containing the forwarded channel message.
+    :type message: Message
+    :returns: None. Sends messages to the user for operation status.
+    :raises Exception: Logs and informs the user if there's an error during the process.
+    """
 
     user_id = message.from_user.id
     addition_timestamp = datetime.now().isoformat()
@@ -801,7 +875,18 @@ async def forwarded_message(message: Message):
 #################### Обработчик для получения списка каналов
 @router.message(lambda message: message.text and not message.text.startswith('/'))
 async def async_process_channels_input(message: Message):
+    """
+    Handles a message from a user and attempts to add channels from the text.
+    If the message is a forwarded message from a channel, it calls the forwarded_message function.
+    If the message is a forward from a user in a chat, it replies that the message is from a person, not a channel.
+    Otherwise, it processes the message as a list of channels to add, scrapes the topics of the channels,
+    adds the channels to the database, and links the channels to the user.
 
+    :param message: The message object containing the text of the channels to add.
+    :type message: Message
+    :returns: None. Sends messages to the user for operation status.
+    :raises Exception: Logs and informs the user if there's an error during the process.
+    """
     # Если это пересылка поста из группы, то добавляем как forwarded сообщение
     if message.forward_from_chat and message.forward_from_chat.type == 'channel':
         await forwarded_message(message)
