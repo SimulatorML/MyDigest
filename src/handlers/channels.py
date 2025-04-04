@@ -171,8 +171,8 @@ async def try_handler(callback: CallbackQuery, state: FSMContext):
     example_channels = [
         {"display_name": "РИА", "link": "@rian_ru"},
         {"display_name": "Ридовка", "link": "@readovkanews"},
+        {"display_name": "KarpovCourses",  "link": "@KarpovCourses"},
         {"display_name": "Спортс", "link": "@sportsru"},
-        {"display_name": "Эксплойт",  "link": "@exploitex"},
         {"display_name": "Москвач", "link": "@moscowach"},
         {"display_name": "GPTMainNews", "link": "@GPTMainNews"},
         {"display_name": "Кинопоиск",  "link": "@kinopoisk"},
