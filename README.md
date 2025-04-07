@@ -70,4 +70,14 @@ A news aggregator bot that provides users with personalized, concise daily diges
 3) `src` - код проекта
 3) `test` - тесты
 
+## The main tools used in the project
+
+![Python](https://img.shields.io/badge/Python_3.12-FFFFFF?style=for-the-badge&logo=python&logoColor=306998&color=000000)
+![Aiogram](https://img.shields.io/badge/Aiogram_3.16.0-FFFFFF?style=for-the-badge&logo=Aiogram&logoColor=306998&color=000000)
+![Pylint](https://img.shields.io/badge/Pylint_3.3.5-FFFFFF?style=for-the-badge&logo=Pylint&logoColor=306998&color=000000)
+
+![MistralAI](https://img.shields.io/badge/MistralAI_1.5.0-FFFFFF?style=for-the-badge&logo=ai&logoColor=306998&color=000000)
+![Supabase](https://img.shields.io/badge/Supabase_2.11.0-FFFFFF?style=for-the-badge&logo=supabase&logoColor=306998&color=000000)
+
+![Pandas](https://img.shields.io/badge/Pandas_2.2.2-FFFFFF?style=for-the-badge&logo=pandas&logoColor=green&color=000000)
 

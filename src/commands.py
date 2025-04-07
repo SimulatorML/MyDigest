@@ -1,29 +1,16 @@
 from aiogram.types import BotCommand
 from aiogram import Bot
 
+# Все Команды бота
+ALL_COMMANDS = [
 
-# Команды для работы с каналами
-CHANNEL_COMMANDS = [
-    BotCommand(command="add_channels", description="Добавить каналы"),
-    BotCommand(command="show_channels", description="Показать список каналов"),
-    BotCommand(command="delete_channels", description="Удалить каналы"),
-    BotCommand(command="clear_channels", description="Очистить список каналов"),
+    BotCommand(command="receive_news", description="⭐️Получить новые сообщения"),
+    BotCommand(command="set_interval", description="⏲️Установить интервал отправки дайджестов"),
+    BotCommand(command="delete_channels", description="🗑️Удалить каналы"),
+    BotCommand(command="show_channels", description="📋Показать список каналов"),
+    BotCommand(command="stop_news", description="⛔️Остановить сообщения"),
+
 ]
-
-# Команды для работы с дайджестами
-DIGEST_COMMANDS = [
-
-    BotCommand(command="receive_news", description="Получить новые сообщения")
-]
-
-# Общие команды
-COMMON_COMMANDS = [
-    BotCommand(command="help", description="Показать справку"),
-]
-
-# Все команды бота
-ALL_COMMANDS = COMMON_COMMANDS + CHANNEL_COMMANDS + DIGEST_COMMANDS
-
 
 async def setup_commands(bot: Bot):
     """Установка всех команд бота"""
