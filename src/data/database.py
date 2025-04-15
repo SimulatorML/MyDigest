@@ -460,10 +460,9 @@ class SupabaseDB:
             response = (
                 self.client.table("users")
                 .update({
-                    "comments": self.client.fn(
-                        "array_append",
-                        self.client.fn("COALESCE", self.client.column("comments"), "[]"),
-                        comment
+                    "comments": self.client.raw(
+                        "comments || to_jsonb(%s)::jsonb",
+                        [comment]
                     )
                 })
                 .eq("user_id", user_id)
