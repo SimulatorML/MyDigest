@@ -29,6 +29,7 @@ class UserStates(StatesGroup):
     selecting_channels = State()
     try_selecting_channels = State()
     waiting_for_interval = State()
+    waiting_for_comment = State()
 
 
 ############################## Приветствие и тъюториал ###############################
@@ -504,6 +505,38 @@ async def process_interval_input(message: Message, state: FSMContext):
     except Exception as e:
         await message.answer("⚠️ Что-то пошло не так. Попробуйте позже.")
         logging.error("Ошибка в process_interval_input: %s", e)
+
+
+############################## /comment - оставить комментарий ##############################
+
+@router.message(Command("comment"))
+async def start_comment(message: Message, state: FSMContext):
+    """Запускает процесс сбора комментария"""
+    await message.answer(
+        "📝 Напишите ваш комментарий или пожелание:\n\n"
+        "Чтобы отменить, нажмите /cancel"
+    )
+    await state.set_state(UserStates.waiting_for_comment)
+
+@router.message(UserStates.waiting_for_comment)
+async def save_comment(message: Message, state: FSMContext):
+    # Сохраняет комментарий в базу
+    user_id = message.from_user.id
+    comment = message.text.strip()
+
+    try:
+        # Добавляем комментарий в массив
+        success = await db.add_user_comment(user_id, comment)
+        if success:
+            await message.answer("✅ Ваш комментарий принят!")
+        else:
+            await message.answer("❌ Ошибка при сохранении комментария")
+            
+    except Exception as e:
+        logging.error(f"Comment error: {str(e)}")
+        await message.answer("⚠️ Произошла ошибка, попробуйте позже")
+        
+    await state.clear()
 
 ############################## show_channels - Показать каналы #####################
 

@@ -220,22 +220,22 @@ class TelegramScraper:
             logging.error("\nОшибка в check_new_messages для пользователя %s: %s\n", user_id, e)
 
 
-            error_message = str(e).lower()
+            # error_message = str(e).lower()
             
-            # chat not found
-            if "chat not found" in error_message:
-                logging.error(f"Чат с пользователем {user_id} не найден. ⚠️ Деактивация.")
-                await self.db.set_user_receiving_news(user_id, False)  # Деактивируем
-                TelegramScraper.stop_auto_news_check(user_id)  # Останавливаем задачи
+            # # chat not found
+            # if "chat not found" in error_message:
+            #     logging.error(f"Чат с пользователем {user_id} не найден. ⚠️ Деактивация.")
+            #     await self.db.set_user_receiving_news(user_id, False)  # Деактивируем
+            #     TelegramScraper.stop_auto_news_check(user_id)  # Останавливаем задачи
 
-            # При заблокированном боте
-            elif "bot was blocked by the user" in error_message:
-                logging.error(f"Пользователь {user_id} заблокировал бота. ⚠️ Деактивация.")
-                await self.db.set_user_receiving_news(user_id, False)
-                TelegramScraper.stop_auto_news_check(user_id)
+            # # При заблокированном боте
+            # elif "bot was blocked by the user" in error_message:
+            #     logging.error(f"Пользователь {user_id} заблокировал бота. ⚠️ Деактивация.")
+            #     await self.db.set_user_receiving_news(user_id, False)
+            #     TelegramScraper.stop_auto_news_check(user_id)
 
-            else:
-                await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+            # else:
+            #     await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 3600):
         """

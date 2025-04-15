@@ -454,3 +454,22 @@ class SupabaseDB:
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
+
+    async def add_user_comment(self, user_id: int, comment: str) -> bool:
+        try:
+            response = (
+                self.client.table("users")
+                .update({
+                    "comments": self.client.fn(
+                        "array_append",
+                        self.client.fn("COALESCE", self.client.column("comments"), "[]"),
+                        comment
+                    )
+                })
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return bool(response.data)
+        except Exception as e:
+            self.handle_error(e, user_id, None)
+            return False
