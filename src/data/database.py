@@ -471,5 +471,5 @@ class SupabaseDB:
             )
             return bool(response.data)
         except Exception as e:
-            self.handle_error(e, user_id, None)
+            SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
