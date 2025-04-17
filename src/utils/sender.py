@@ -49,7 +49,7 @@ class AnnouncementSender:
             except Exception as e:
                 logger.error(f"Ошибка отправки {user_id}: {e}")
 
-        logger.info(f"Успешно отправлено: {success}/{len(user_ids)}")
+            logger.info(f"Успешно отправлено: {success}/{len(user_ids)}")
 
 
 if __name__ == "__main__":
