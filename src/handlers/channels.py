@@ -513,13 +513,28 @@ async def process_interval_input(message: Message, state: FSMContext):
 async def start_comment(message: Message, state: FSMContext):
     """Запускает процесс сбора комментария"""
     await message.answer(
-        "📝 Напишите ваш комментарий или пожелание:\n\n"
+        "📝 Напишите ваш комментарий. Например:\n\n"
+        "• предложите новую функцию\n"
+        "• сообщите об ошибке\n"
+        "• поделитесь впечатлениями\n\n"
         "Чтобы отменить, нажмите /cancel"
     )
     await state.set_state(UserStates.waiting_for_comment)
 
 @router.message(UserStates.waiting_for_comment)
 async def save_comment(message: Message, state: FSMContext):
+
+    # Если это не текстовое сообщение
+    if not message.text:
+        await message.answer("❌ Пока мы обрабатываем только текстовые комментарии 🥲")
+        return
+
+    # Сбрасываем состояние если сообщение - команда
+    if message.text and message.text.startswith('/'):
+        await message.answer("отменили 👌")
+        await state.clear()
+        return
+    
     # Сохраняет комментарий в базу
     user_id = message.from_user.id
     comment = message.text.strip()
