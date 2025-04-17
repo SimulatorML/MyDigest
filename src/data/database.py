@@ -457,18 +457,22 @@ class SupabaseDB:
 
     async def add_user_comment(self, user_id: int, comment: str) -> bool:
         try:
-            response = (
-                self.client.table("users")
-                .update({
-                    "comments": self.client.raw(
-                        "comments || to_jsonb(%s)::jsonb",
-                        [comment]
-                    )
-                })
-                .eq("user_id", user_id)
-                .execute()
-            )
+            # Проверяем существование записи
+            existing = self.client.table("user_comments").select("*").eq("user_id", user_id).execute()
+            
+            if not existing.data:
+                # Создаем новую запись с пустым массивом
+                self.client.table("user_comments").insert({
+                    "user_id": user_id,
+                    "comment": []
+                }).execute()
+            
+            # Обновляем массив комментариев
+            response = self.client.table("user_comments").update({
+                "comment": self.client.rpc('array_append', {'comment', comment})
+            }).eq("user_id", user_id).execute()
+            
             return bool(response.data)
         except Exception as e:
-            SupabaseErrorHandler.handle_error(e, user_id, None)
+            logging.error(f"Ошибка при сохранении комментария: {str(e)}")
             return False
