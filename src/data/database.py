@@ -456,6 +456,7 @@ class SupabaseDB:
             return False
 
     async def add_user_comment(self, user_id: int, comment: str) -> bool:
+        """Чтобы комментарии можно было оставить"""
         try:
             # Проверяем существование записи и получаем текущие комментарии
             existing = self.client.table("users").select("comment").eq("user_id", user_id).execute()
