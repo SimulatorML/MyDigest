@@ -458,17 +458,17 @@ class SupabaseDB:
     async def add_user_comment(self, user_id: int, comment: str) -> bool:
         try:
             # Проверяем существование записи
-            existing = self.client.table("user_comments").select("*").eq("user_id", user_id).execute()
+            existing = self.client.table("users").select("*").eq("user_id", user_id).execute()
             
             if not existing.data:
                 # Создаем новую запись с пустым массивом
-                self.client.table("user_comments").insert({
+                self.client.table("users").insert({
                     "user_id": user_id,
                     "comment": []
                 }).execute()
             
             # Обновляем массив комментариев
-            response = self.client.table("user_comments").update({
+            response = self.client.table("users").update({
                 "comment": self.client.rpc('array_append', {'comment', comment})
             }).eq("user_id", user_id).execute()
             
