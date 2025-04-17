@@ -29,7 +29,7 @@ class AnnouncementSender:
         message: str,
         for_users: Union[List[int], Callable[[], List[int]]] = None
     ):
-        """Отправка сообщения пользователям."""
+        """Отправка сообщения пользователям"""
         # Определяем список получателей
         if for_users is None:
             user_ids = self.retrieve_current_users()
@@ -38,16 +38,19 @@ class AnnouncementSender:
         else:
             user_ids = for_users
 
-        # Отправка
         success = 0
         for user_id in user_ids:
             try:
-                await self.bot.send_message(user_id, message)
-                success += 1
+                # Проверяем доступность чата
+                chat = await self.bot.get_chat(user_id)
+                if chat:
+                    await self.bot.send_message(user_id, message)
+                    success += 1
             except Exception as e:
                 logger.error(f"Ошибка отправки {user_id}: {e}")
 
         logger.info(f"Успешно отправлено: {success}/{len(user_ids)}")
+
 
 if __name__ == "__main__":
     import asyncio
