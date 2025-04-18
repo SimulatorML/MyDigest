@@ -530,6 +530,11 @@ async def save_comment(message: Message, state: FSMContext):
     )
 
     try:
+        # Формируем подпись с комментарием (если есть)
+        caption = user_info
+        if message.caption or message.text:
+            caption += f"\n\n📝 Комментарий:\n{message.caption or message.text}"
+
         # Отправляем в группу
         if message.content_type == ContentType.TEXT:
             await message.bot.send_message(
@@ -540,22 +545,19 @@ async def save_comment(message: Message, state: FSMContext):
             await message.bot.send_photo(
                 GROUP_LOGS_ID,
                 message.photo[-1].file_id,
-                caption=f"{user_info}\n📸 Прислал фото с комментарием\n\n"
-                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
+                caption=caption
             )
         elif message.content_type == ContentType.VIDEO:
             await message.bot.send_video(
                 GROUP_LOGS_ID,
                 message.video.file_id,
-                caption=f"{user_info}\n🎥 Прислал видео с комментарием\n\n"
-                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
+                caption=caption
             )
         elif message.content_type == ContentType.DOCUMENT:
             await message.bot.send_document(
                 GROUP_LOGS_ID,
                 message.document.file_id,
-                caption=f"{user_info}\n📎 Прислал документ с комментарием\n\n"
-                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
+                caption=caption
             )
 
         await message.answer("✅ Ваш комментарий отправлен команде!")
