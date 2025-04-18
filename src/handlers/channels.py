@@ -514,16 +514,20 @@ async def process_interval_input(message: Message, state: FSMContext):
 async def start_comment(message: Message, state: FSMContext):
     """Запускает процесс сбора комментария"""
     await message.answer(
-        "📝 Напишите ваш комментарий. Например:\n\n"
-        "• предложите новую функцию\n"
-        "• сообщите об ошибке\n"
-        "• поделитесь впечатлениями\n\n"
-        "Чтобы отменить, нажмите /cancel"
+        "📝 Напиши комментарий.\n\n"
+        "📎Можно прикреплять скрины и запись экрана\n"
+        "Чтобы отменить, нажми /cancel"
     )
     await state.set_state(UserStates.waiting_for_comment)
 
 @router.message(UserStates.waiting_for_comment)
 async def save_comment(message: Message, state: FSMContext):
+    # Для отмены
+    if message.text and message.text.startswith('/'):
+        await message.answer("отменили 👌")
+        await state.clear()
+        return
+
     user_info = (
         f"👤 Пользователь: @{message.from_user.username}\n"
         f"🆔 ID: {message.from_user.id}"
@@ -568,37 +572,6 @@ async def save_comment(message: Message, state: FSMContext):
         
     await state.clear()
 
-# @router.message(UserStates.waiting_for_comment)
-# async def save_comment(message: Message, state: FSMContext):
-
-#     # Если это не текстовое сообщение
-#     if not message.text:
-#         await message.answer("❌ Пока мы обрабатываем только текстовые комментарии 🥲")
-#         return
-
-#     # Сбрасываем состояние если сообщение - команда
-#     if message.text and message.text.startswith('/'):
-#         await message.answer("отменили 👌")
-#         await state.clear()
-#         return
-    
-#     # Сохраняет комментарий в базу
-#     user_id = message.from_user.id
-#     comment = message.text.strip()
-
-#     try:
-#         # Добавляем комментарий в массив
-#         success = await db.add_user_comment(user_id, comment)
-#         if success:
-#             await message.answer("✅ Ваш комментарий принят!")
-#         else:
-#             await message.answer("❌ Ошибка при сохранении комментария")
-            
-#     except Exception as e:
-#         logging.error(f"Comment error: {str(e)}")
-#         await message.answer("⚠️ Произошла ошибка, попробуйте позже")
-        
-#     await state.clear()
 
 ############################## show_channels - Показать каналы #####################
 
