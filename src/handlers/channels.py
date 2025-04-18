@@ -547,13 +547,15 @@ async def save_comment(message: Message, state: FSMContext):
             await message.bot.send_video(
                 GROUP_LOGS_ID,
                 message.video.file_id,
-                caption=f"{user_info}\n🎥 Прислал видео с комментарием"
+                caption=f"{user_info}\n🎥 Прислал видео с комментарием\n\n"
+                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
             )
         elif message.content_type == ContentType.DOCUMENT:
             await message.bot.send_document(
                 GROUP_LOGS_ID,
                 message.document.file_id,
-                caption=f"{user_info}\n📎 Прислал документ с комментарием"
+                caption=f"{user_info}\n📎 Прислал документ с комментарием\n\n"
+                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
             )
 
         await message.answer("✅ Ваш комментарий отправлен команде!")
