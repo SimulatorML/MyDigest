@@ -540,7 +540,8 @@ async def save_comment(message: Message, state: FSMContext):
             await message.bot.send_photo(
                 GROUP_LOGS_ID,
                 message.photo[-1].file_id,
-                caption=f"{user_info}\n📸 Прислал фото с комментарием"
+                caption=f"{user_info}\n📸 Прислал фото с комментарием\n\n"
+                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
             )
         elif message.content_type == ContentType.VIDEO:
             await message.bot.send_video(
