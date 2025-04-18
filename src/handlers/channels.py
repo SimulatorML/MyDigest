@@ -3,6 +3,7 @@ import re
 import logging
 import src.handlers.keyboards as kb
 from datetime import datetime
+from aiogram.enums import ContentType
 from aiogram import Router
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram import F
@@ -14,7 +15,7 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
-from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL
+from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL, GROUP_LOGS_ID
 from src.summarization import Summarization
 from src.handlers.messages import BOT_DESCRIPTION, TUTORIAL_STEPS
 
@@ -523,35 +524,76 @@ async def start_comment(message: Message, state: FSMContext):
 
 @router.message(UserStates.waiting_for_comment)
 async def save_comment(message: Message, state: FSMContext):
-
-    # Если это не текстовое сообщение
-    if not message.text:
-        await message.answer("❌ Пока мы обрабатываем только текстовые комментарии 🥲")
-        return
-
-    # Сбрасываем состояние если сообщение - команда
-    if message.text and message.text.startswith('/'):
-        await message.answer("отменили 👌")
-        await state.clear()
-        return
-    
-    # Сохраняет комментарий в базу
-    user_id = message.from_user.id
-    comment = message.text.strip()
+    user_info = (
+        f"👤 Пользователь: @{message.from_user.username}\n"
+        f"🆔 ID: {message.from_user.id}"
+    )
 
     try:
-        # Добавляем комментарий в массив
-        success = await db.add_user_comment(user_id, comment)
-        if success:
-            await message.answer("✅ Ваш комментарий принят!")
-        else:
-            await message.answer("❌ Ошибка при сохранении комментария")
-            
+        # Отправляем в группу
+        if message.content_type == ContentType.TEXT:
+            await message.bot.send_message(
+                GROUP_LOGS_ID,
+                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
+            )
+        elif message.content_type == ContentType.PHOTO:
+            await message.bot.send_photo(
+                GROUP_LOGS_ID,
+                message.photo[-1].file_id,
+                caption=f"{user_info}\n📸 Прислал фото с комментарием"
+            )
+        elif message.content_type == ContentType.VIDEO:
+            await message.bot.send_video(
+                GROUP_LOGS_ID,
+                message.video.file_id,
+                caption=f"{user_info}\n🎥 Прислал видео с комментарием"
+            )
+        elif message.content_type == ContentType.DOCUMENT:
+            await message.bot.send_document(
+                GROUP_LOGS_ID,
+                message.document.file_id,
+                caption=f"{user_info}\n📎 Прислал документ с комментарием"
+            )
+
+        await message.answer("✅ Ваш комментарий отправлен команде!")
+        
     except Exception as e:
-        logging.error(f"Comment error: {str(e)}")
-        await message.answer("⚠️ Произошла ошибка, попробуйте позже")
+        logging.error(f"Ошибка пересылки: {str(e)}")
+        await message.answer("❌ Не удалось отправить комментарий")
         
     await state.clear()
+
+# @router.message(UserStates.waiting_for_comment)
+# async def save_comment(message: Message, state: FSMContext):
+
+#     # Если это не текстовое сообщение
+#     if not message.text:
+#         await message.answer("❌ Пока мы обрабатываем только текстовые комментарии 🥲")
+#         return
+
+#     # Сбрасываем состояние если сообщение - команда
+#     if message.text and message.text.startswith('/'):
+#         await message.answer("отменили 👌")
+#         await state.clear()
+#         return
+    
+#     # Сохраняет комментарий в базу
+#     user_id = message.from_user.id
+#     comment = message.text.strip()
+
+#     try:
+#         # Добавляем комментарий в массив
+#         success = await db.add_user_comment(user_id, comment)
+#         if success:
+#             await message.answer("✅ Ваш комментарий принят!")
+#         else:
+#             await message.answer("❌ Ошибка при сохранении комментария")
+            
+#     except Exception as e:
+#         logging.error(f"Comment error: {str(e)}")
+#         await message.answer("⚠️ Произошла ошибка, попробуйте позже")
+        
+#     await state.clear()
 
 ############################## show_channels - Показать каналы #####################
 
