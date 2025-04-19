@@ -44,7 +44,9 @@ class AnnouncementSender:
                 # Проверяем доступность чата
                 chat = await self.bot.get_chat(user_id)
                 if chat:
-                    await self.bot.send_message(user_id, message)
+                    # await self.bot.send_message(user_id, message)
+                    sent_message = await self.bot.send_message(user_id, message)
+                    await message.chat.pin_message(sent_message.message_id)
                     success += 1
             except Exception as e:
                 logger.error(f"Ошибка отправки {user_id}: {e}")
