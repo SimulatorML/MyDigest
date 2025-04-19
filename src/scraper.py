@@ -7,7 +7,7 @@ from telethon import TelegramClient, errors
 from typing import List, Dict, Union
 from src.data.database import supabase
 from src.data.database import SupabaseDB
-from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY
+from src.config.config import TELEGRAM_BOT_TOKEN, API_ID, API_HASH, PHONE_NUMBER, MISTRAL_KEY, DEACTIVATE_USER
 from src.summarization import Summarization
 from telethon.tl.types import Channel, Chat
 
@@ -71,6 +71,7 @@ class TelegramScraper:
         self.db = SupabaseDB(supabase)
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.summarizer = Summarization(api_key=MISTRAL_KEY)
+        self.deactivate_user = DEACTIVATE_USER
 
     @staticmethod
     async def get_entity(entity_name: str):
@@ -219,23 +220,23 @@ class TelegramScraper:
         except Exception as e:
             logging.error("\nОшибка в check_new_messages для пользователя %s: %s\n", user_id, e)
 
+            if self.deactivate_user:
+                error_message = str(e).lower()
+                
+                # chat not found
+                if "chat not found" in error_message:
+                    logging.error(f"Чат с пользователем {user_id} не найден. ⚠️ Деактивация.")
+                    await self.db.set_user_receiving_news(user_id, False)  # Деактивируем
+                    TelegramScraper.stop_auto_news_check(user_id)  # Останавливаем задачи
 
-            # error_message = str(e).lower()
-            
-            # # chat not found
-            # if "chat not found" in error_message:
-            #     logging.error(f"Чат с пользователем {user_id} не найден. ⚠️ Деактивация.")
-            #     await self.db.set_user_receiving_news(user_id, False)  # Деактивируем
-            #     TelegramScraper.stop_auto_news_check(user_id)  # Останавливаем задачи
+                # При заблокированном боте
+                elif "bot was blocked by the user" in error_message:
+                    logging.error(f"Пользователь {user_id} заблокировал бота. ⚠️ Деактивация.")
+                    await self.db.set_user_receiving_news(user_id, False)
+                    TelegramScraper.stop_auto_news_check(user_id)
 
-            # # При заблокированном боте
-            # elif "bot was blocked by the user" in error_message:
-            #     logging.error(f"Пользователь {user_id} заблокировал бота. ⚠️ Деактивация.")
-            #     await self.db.set_user_receiving_news(user_id, False)
-            #     TelegramScraper.stop_auto_news_check(user_id)
-
-            # else:
-            #     await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
+                else:
+                    await self.bot.send_message(user_id, "❌ Ошибка при получении дайджеста. Попробуйте позже.")
 
     async def start_auto_news_check(self, user_id: int, interval: int = 3600):
         """

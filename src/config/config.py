@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Деактивация юзеров, если они используют бота
+DEACTIVATE_USER = os.getenv("DEACTIVATE_USER", "True").lower() in ("true", "1")
+
 # Interval Variables
 NEWS_CHECK_INTERVAL = 3600  # интервал скрапинга в секундах
 DAY_RANGE_INTERVAL = 7     # интервал скрепинга в днях для определения темы канала
