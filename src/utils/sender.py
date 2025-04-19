@@ -44,9 +44,17 @@ class AnnouncementSender:
                 # Проверяем доступность чата
                 chat = await self.bot.get_chat(user_id)
                 if chat:
-                    # await self.bot.send_message(user_id, message)
                     sent_message = await self.bot.send_message(user_id, message)
-                    await message.chat.pin_message(sent_message.message_id)
+
+                # Пытаемся закрепить сообщение
+                try:
+                    await self.bot.pin_chat_message(
+                        chat_id=user_id,
+                        message_id=sent_message.message_id
+                    )
+                except Exception as pin_error:
+                    logging.error(f"Ошибка закрепления для {user_id}: {pin_error}")
+
                     success += 1
             except Exception as e:
                 logger.error(f"Ошибка отправки {user_id}: {e}")
