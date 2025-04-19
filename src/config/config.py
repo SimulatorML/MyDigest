@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Деактивация юзеров, если они используют бота
-DEACTIVATE_USER = os.getenv("DEACTIVATE_USER", "True").lower() in ("true", "1")
+DEACTIVATE_USER = os.getenv("DEACTIVATE_USER", "False").lower() in ("true", "1")
 
 # Interval Variables
 NEWS_CHECK_INTERVAL = 3600  # интервал скрапинга в секундах
