@@ -3,6 +3,7 @@ import re
 import logging
 import src.handlers.keyboards as kb
 from datetime import datetime
+from aiogram.enums import ContentType
 from aiogram import Router
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram import F
@@ -14,7 +15,7 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
-from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL
+from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL, GROUP_LOGS_ID
 from src.summarization import Summarization
 from src.handlers.messages import BOT_DESCRIPTION, TUTORIAL_STEPS
 
@@ -29,6 +30,7 @@ class UserStates(StatesGroup):
     selecting_channels = State()
     try_selecting_channels = State()
     waiting_for_interval = State()
+    waiting_for_comment = State()
 
 
 ############################## Приветствие и тъюториал ###############################
@@ -504,6 +506,72 @@ async def process_interval_input(message: Message, state: FSMContext):
     except Exception as e:
         await message.answer("⚠️ Что-то пошло не так. Попробуйте позже.")
         logging.error("Ошибка в process_interval_input: %s", e)
+
+
+############################## /comment - оставить комментарий ##############################
+
+@router.message(Command("comment"))
+async def start_comment(message: Message, state: FSMContext):
+    """Запускает процесс сбора комментария"""
+    await message.answer(
+        "📝 Напиши комментарий.\n\n"
+        "📎Можно прикреплять скрины и запись экрана\n"
+        "Чтобы отменить, нажми /cancel"
+    )
+    await state.set_state(UserStates.waiting_for_comment)
+
+@router.message(UserStates.waiting_for_comment)
+async def save_comment(message: Message, state: FSMContext):
+    # Для отмены
+    if message.text and message.text.startswith('/'):
+        await message.answer("отменили 👌")
+        await state.clear()
+        return
+
+    user_info = (
+        f"👤 Пользователь: @{message.from_user.username}\n"
+        f"🆔 ID: {message.from_user.id}"
+    )
+
+    try:
+        # Формируем подпись с комментарием (если есть)
+        caption = user_info
+        if message.caption or message.text:
+            caption += f"\n\n📝 Комментарий:\n{message.caption or message.text}"
+
+        # Отправляем в группу
+        if message.content_type == ContentType.TEXT:
+            await message.bot.send_message(
+                GROUP_LOGS_ID,
+                f"{user_info}\n\n📝 Комментарий:\n{message.text}"
+            )
+        elif message.content_type == ContentType.PHOTO:
+            await message.bot.send_photo(
+                GROUP_LOGS_ID,
+                message.photo[-1].file_id,
+                caption=caption
+            )
+        elif message.content_type == ContentType.VIDEO:
+            await message.bot.send_video(
+                GROUP_LOGS_ID,
+                message.video.file_id,
+                caption=caption
+            )
+        elif message.content_type == ContentType.DOCUMENT:
+            await message.bot.send_document(
+                GROUP_LOGS_ID,
+                message.document.file_id,
+                caption=caption
+            )
+
+        await message.answer("✅ Ваш комментарий отправлен команде!")
+        
+    except Exception as e:
+        logging.error(f"Ошибка пересылки: {str(e)}")
+        await message.answer("❌ Не удалось отправить комментарий")
+        
+    await state.clear()
+
 
 ############################## show_channels - Показать каналы #####################
 

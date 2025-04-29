@@ -454,3 +454,32 @@ class SupabaseDB:
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
             return False
+
+    async def add_user_comment(self, user_id: int, comment: str) -> bool:
+        """Чтобы комментарии можно было оставить"""
+        try:
+            # Проверяем существование записи и получаем текущие комментарии
+            existing = self.client.table("users").select("comment").eq("user_id", user_id).execute()
+            
+            # Инициализируем current_comments как пустой список, если данных нет или comment = NULL
+            current_comments = []
+            if existing.data:
+                current_comments = existing.data[0].get("comment") or []  # Заменяем None на []
+            
+            # Добавляем новый комментарий
+            updated_comments = current_comments + [comment]
+            
+            # Обновляем или создаем запись
+            response = (
+                self.client.table("users")
+                .upsert({
+                    "user_id": user_id,
+                    "comment": updated_comments
+                }, on_conflict="user_id")
+                .execute()
+            )
+            
+            return bool(response.data)
+        except Exception as e:
+            logging.error(f"Ошибка при сохранении комментария: {str(e)}")
+            return False
