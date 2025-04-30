@@ -56,6 +56,7 @@ class SupabaseDB:
         :param login_timestamp: The timestamp of the user's last login.
                                  Defaults to the current time if not provided.
         :param check_interval: Digest sending interval in seconds, defaults to 3600
+        :param is_receiving_news: Whether the user is receiving news, defaults to False
         :return: None
         :raises: SupabaseErrorHandler if an error occurs.
         """
