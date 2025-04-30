@@ -45,7 +45,8 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
     async def add_user(
-        self, user_id: int, username: str, login_timestamp: str = None, check_interval: int = 3600
+        self, user_id: int, username: str, login_timestamp: str = None, check_interval: int = 3600,
+        is_receiving_news: bool = False
     ) -> None:
         """
         Add or update a user in the database.
@@ -64,7 +65,8 @@ class SupabaseDB:
                     "user_id": user_id,
                     "username": username,
                     "login_timestamp": login_timestamp,
-                    "check_interval": check_interval
+                    "check_interval": check_interval,
+                    "is_receiving_news": is_receiving_news
                 }
                 ).execute()
         except Exception as e:
