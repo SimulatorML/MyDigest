@@ -4,6 +4,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# onboarding video ids
+ONBOARDING_VIDEO_ID = "BAACAgIAAxkDAAIU6GgMrgKVaHT_X6iYy1vixh3EZ25bAAL_bAACmoRoSBaF67Kr0zMcNgQ"  # видео с шагами
+# ONBOARDING_VIDEO_ID = "BAACAgIAAxkDAAIVvWgM67y8KpMYK5kFyv79ixzaCiQ7AAJycQACmoRoSIZQeTItoKRNNgQ"  # видео без шагов !!!
+
 # Деактивация юзеров, если они используют бота
 DEACTIVATE_USER = os.getenv("DEACTIVATE_USER", "False").lower() in ("true", "1")
 
