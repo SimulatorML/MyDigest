@@ -549,7 +549,7 @@ async def start_comment(message: Message, state: FSMContext):
 async def save_comment(message: Message, state: FSMContext):
     # Для отмены
     if message.text and message.text.startswith('/'):
-        await message.answer("отменили 👌")
+        await message.answer("Вы отменили отправку комментария 👌")
         await state.clear()
         return
 
