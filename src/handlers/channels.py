@@ -7,7 +7,7 @@ from aiogram.enums import ContentType
 from aiogram import Router
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram import F
-from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, InlineKeyboardMarkup #, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -15,9 +15,9 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
-from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL, GROUP_LOGS_ID
+from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL, GROUP_LOGS_ID, ONBOARDING_VIDEO_ID
 from src.summarization import Summarization
-from src.handlers.messages import BOT_DESCRIPTION, TUTORIAL_STEPS
+# from src.handlers.messages import BOT_DESCRIPTION, TUTORIAL_STEPS
 
 router = Router()
 db = SupabaseDB(supabase)
@@ -34,6 +34,17 @@ class UserStates(StatesGroup):
 
 
 ############################## Приветствие и тъюториал ###############################
+
+# временный хендлер для добавления video-инструкции
+ # @router.message(Command("upload_video"))
+ # async def upload_video(message: Message):
+ #     video = FSInputFile("media/onbording_video<...>.mp4")
+ #     sent_message = await message.answer_video(video)
+ 
+ #     # get file_id
+ #     file_id = sent_message.video.file_id
+ #     await message.answer(f"File ID: {file_id}")
+
 
 @router.message(CommandStart())
 async def process_start_command(message: Message):
