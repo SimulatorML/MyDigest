@@ -814,7 +814,7 @@ async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSM
 
 ############################## receive_news - Получить сводки новостей ############
 ## Реагиуем на кнопку "Получить новости" в inline-клавиатуре
-@router.message(F.text == "⭐️ Получать новости")
+@router.message(F.text == "⭐️ Получать дайджесты")
 async def handle_receive_news_btn(message: Message, state: FSMContext):
     # Reuse /receive_news logic:
     await receive_news_handler(message, state)
@@ -846,7 +846,7 @@ async def receive_news_handler(message: Message, state: FSMContext):
 
 ############################## stop_news Остановить получение сводки новостей #################
 
-@router.message(F.text == "🛑 Остановить новости")
+@router.message(F.text == "🛑 Остановить дайджесты")
 async def handle_stop_news_btn(message: Message, state: FSMContext):
     # Reuse /stop_news logic:
     await stop_news_handler(message, state)
@@ -861,8 +861,8 @@ async def stop_news_handler(message: Message, state: FSMContext):
     await db.set_user_receiving_news(user_id, False)
     scraper.stop_auto_news_check(user_id)
     await message.answer(
-        "Вы остановили получение новостей. "
-        "Для повторного получения новостей нажмите на кнопку <b>Получить новости</b>", parse_mode="HTML"
+        "Вы остановили получение дайджестов.\n\n"
+        "Для повторной активации нажмите кнопку <b>⭐️Получать дайджесты</b>", parse_mode="HTML"
     )
 
 
