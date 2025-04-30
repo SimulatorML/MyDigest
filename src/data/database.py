@@ -45,7 +45,8 @@ class SupabaseDB:
             SupabaseErrorHandler.handle_error(e, user_id, None)
 
     async def add_user(
-        self, user_id: int, username: str, login_timestamp: str = None, check_interval: int = 3600
+        self, user_id: int, username: str, login_timestamp: str = None, check_interval: int = 3600,
+        is_receiving_news: bool = False
     ) -> None:
         """
         Add or update a user in the database.
@@ -55,6 +56,7 @@ class SupabaseDB:
         :param login_timestamp: The timestamp of the user's last login.
                                  Defaults to the current time if not provided.
         :param check_interval: Digest sending interval in seconds, defaults to 3600
+        :param is_receiving_news: Whether the user is receiving news, defaults to False
         :return: None
         :raises: SupabaseErrorHandler if an error occurs.
         """
@@ -64,7 +66,8 @@ class SupabaseDB:
                     "user_id": user_id,
                     "username": username,
                     "login_timestamp": login_timestamp,
-                    "check_interval": check_interval
+                    "check_interval": check_interval,
+                    "is_receiving_news": is_receiving_news
                 }
                 ).execute()
         except Exception as e:
@@ -453,33 +456,4 @@ class SupabaseDB:
             return bool(response.data)
         except Exception as e:
             SupabaseErrorHandler.handle_error(e, user_id, None)
-            return False
-
-    async def add_user_comment(self, user_id: int, comment: str) -> bool:
-        """Чтобы комментарии можно было оставить"""
-        try:
-            # Проверяем существование записи и получаем текущие комментарии
-            existing = self.client.table("users").select("comment").eq("user_id", user_id).execute()
-            
-            # Инициализируем current_comments как пустой список, если данных нет или comment = NULL
-            current_comments = []
-            if existing.data:
-                current_comments = existing.data[0].get("comment") or []  # Заменяем None на []
-            
-            # Добавляем новый комментарий
-            updated_comments = current_comments + [comment]
-            
-            # Обновляем или создаем запись
-            response = (
-                self.client.table("users")
-                .upsert({
-                    "user_id": user_id,
-                    "comment": updated_comments
-                }, on_conflict="user_id")
-                .execute()
-            )
-            
-            return bool(response.data)
-        except Exception as e:
-            logging.error(f"Ошибка при сохранении комментария: {str(e)}")
             return False

@@ -7,7 +7,7 @@ from aiogram.enums import ContentType
 from aiogram import Router
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram import F
-from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import Message, InlineKeyboardButton, CallbackQuery, InlineKeyboardMarkup #, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -15,9 +15,9 @@ from src.scraper import TelegramScraper
 from src.data.database import supabase
 from src.data.database import SupabaseDB
 from src.scraper import init_telethon_client
-from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL, GROUP_LOGS_ID
+from src.config import MISTRAL_KEY, DAY_RANGE_INTERVAL, GROUP_LOGS_ID, ONBOARDING_VIDEO_ID
 from src.summarization import Summarization
-from src.handlers.messages import BOT_DESCRIPTION, TUTORIAL_STEPS
+# from src.handlers.messages import BOT_DESCRIPTION, TUTORIAL_STEPS
 
 router = Router()
 db = SupabaseDB(supabase)
@@ -35,13 +35,24 @@ class UserStates(StatesGroup):
 
 ############################## Приветствие и тъюториал ###############################
 
+# временный хендлер для добавления video-инструкции
+# @router.message(Command("upload_video"))
+# async def upload_video(message: Message):
+#     video = FSInputFile("media/onbording_video<...>.mp4")
+#     sent_message = await message.answer_video(video)
+
+#     # get file_id
+#     file_id = sent_message.video.file_id
+#     await message.answer(f"File ID: {file_id}")
+
+
 @router.message(CommandStart())
 async def process_start_command(message: Message):
     """
        Processes the /start command by registering the user (if not exists) and sending a greeting message.
 
        :param message: Incoming message object that triggered the /start command.
-       :returns: None. Sends a message with BOT_DESCRIPTION and greeting_keyboard_inline.
+       :returns: None. Sends a messages with video onboarding and brief instructions.
     """
 
     user_id = message.from_user.id
@@ -52,322 +63,336 @@ async def process_start_command(message: Message):
     if not user_exists:
         await db.add_user(user_id, username, login_timestamp)  # check_interval=3600 - по умолчанию
 
-    await message.answer(text=BOT_DESCRIPTION, reply_markup=kb.greeting_keyboard_inline)
+    await message.answer(text="Добро пожаловать в MyDigest !", reply_markup=kb.menu)
 
-
-@router.callback_query(lambda c: c.data and c.data == "greeting")
-async def greeting_callback_handler(callback: CallbackQuery):
-    """
-       Handles the callback query when the "greeting" button is pressed and sends the first tutorial step.
-
-       :param callback: CallbackQuery object from the pressed inline button.
-       :returns: None. Sends a new message with the first tutorial step and corresponding keyboard.
-    """
-
-    await callback.answer()
-
-    # Запускаем обучение: отправляем первый шаг туториала.
-    step_index = 0
-    total_steps = len(TUTORIAL_STEPS)
-    text = TUTORIAL_STEPS[step_index]
-    keyboard = get_tutorial_keyboard(step_index, total_steps)
-
-    await callback.message.answer(text=text, reply_markup=keyboard, parse_mode="HTML")
-
-
-def get_tutorial_keyboard(step_index: int, total_steps: int) -> InlineKeyboardMarkup:
-    """
-    Generates an inline keyboard for the tutorial navigation with "Back", "Next", and "Try" buttons.
-
-    :param step_index: Current step index of the tutorial.
-    :param total_steps: Total number of tutorial steps.
-    :returns: InlineKeyboardMarkup object with navigation buttons.
-    """
-
-    buttons = []
-
-    # Show '← Назад' if not on the first screen
-    if step_index > 0:
-        buttons.append(
-            InlineKeyboardButton(
-                text="← Назад",
-                callback_data=f"tutorial_back_{step_index}"
-            )
-        )
-
-    # Show 'Далее →' if not on the last screen
-    if step_index < total_steps - 1:
-        buttons.append(
-            InlineKeyboardButton(
-                text="Далее →",
-                callback_data=f"tutorial_next_{step_index}"
-            )
-        )
-    # Adding "Try" button
-    try_button = [InlineKeyboardButton(
-        text="Попробовать",
-        callback_data="try"
-    )]
-
-    return InlineKeyboardMarkup(inline_keyboard=[buttons, try_button])
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith("tutorial_next_"))
-async def tutorial_next_handler(callback: CallbackQuery):
-    """
-        Handles the callback query for moving to the next tutorial step.
-
-        :param callback: CallbackQuery object containing data with the current step index.
-        :returns: None. Edits the current message with the next tutorial step text and updated keyboard.
-    """
-
-    await callback.answer()
-
-    data = callback.data  # e.g. "tutorial_next_0"
-    current_step = int(data.split("_")[-1])
-    next_step = current_step + 1
-
-    total_steps = len(TUTORIAL_STEPS)
-    if next_step < total_steps:
-        new_text = TUTORIAL_STEPS[next_step]
-        new_kb = get_tutorial_keyboard(next_step, total_steps)
-        await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith("tutorial_back_"))
-async def tutorial_back_handler(callback: CallbackQuery):
-    """
-        Handles the callback query for moving back to the previous tutorial step.
-
-        :param callback: CallbackQuery object containing data with the current step index.
-        :returns: None. Edits the current message with the previous tutorial step text and updated keyboard.
-    """
-
-    await callback.answer()
-
-    data = callback.data  # e.g. "tutorial_back_2"
-    current_step = int(data.split("_")[-1])
-    prev_step = current_step - 1
-
-    if prev_step >= 0:
-        new_text = TUTORIAL_STEPS[prev_step]
-        new_kb = get_tutorial_keyboard(prev_step, len(TUTORIAL_STEPS))
-        await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
-
-
-########################### Добавленная логика "Попробовать" ###########################
-
-@router.callback_query(lambda c: c.data == "try")
-async def try_handler(callback: CallbackQuery, state: FSMContext):
-    """
-    Handles the "Try" callback by sending a message with a list of example channels for selection.
-
-    :param callback: CallbackQuery object triggered by the "Try" button.
-    :param state: FSMContext for storing selected channels.
-    :returns: None. Sends a message with an inline keyboard of example channels.
-    """
-
-    await callback.answer()
-
-    # Список каналов. Ключ display_name - то, что увидит пользователь на кнопке, link - реальное канал в Telegram
-    example_channels = [
-        {"display_name": "РИА", "link": "@rian_ru"},
-        {"display_name": "Ридовка", "link": "@readovkanews"},
-        {"display_name": "KarpovCourses",  "link": "@KarpovCourses"},
-        {"display_name": "Спортс", "link": "@sportsru"},
-        {"display_name": "Москвач", "link": "@moscowach"},
-        {"display_name": "GPTMainNews", "link": "@GPTMainNews"},
-        {"display_name": "Кинопоиск",  "link": "@kinopoisk"},
-        {"display_name": "BOGDANISSIMO", "link": "@bogdanisssimo"},
-    ]
-
-    # Сохраняем их в state
-    await state.update_data(try_channels=example_channels, try_selected=[])
-
-    # Устанавливаем состояние для выбора каналов
-    await state.set_state(UserStates.try_selecting_channels)
-
-    builder = InlineKeyboardBuilder()
-
-    for i, ch in enumerate(example_channels):
-        builder.button(
-            text=ch["display_name"],
-            callback_data=f"try_select_{i}"
-        )
-
-    builder.adjust(2)  # Две кнопки в одной строке
-
-    # Добавим кнопку подтверждения и кнопку "Добавить свой канал"
-    builder.row(
-        InlineKeyboardButton(
-            text="Подтвердить и выслать дайджест",
-            callback_data="try_confirm"
-        )
-    )
-    builder.row(
-        InlineKeyboardButton(
-            text="Добавить свой канал",
-            callback_data="try_add_channel"
-        )
+    # Показываем Video-онбординг и закрепляем инструкцию
+    await message.answer_video(
+        video=ONBOARDING_VIDEO_ID,
+        caption=(
+            "⤵️ Перешли сообщение из <i><u>публичного</u></i> канала, нажми \n⭐️ Получать дайджесты - и наслаждайся ⚡️\n\n"
+            "❤️ Каналы и чаты можно добавлять в любое время и в любом количестве. \nЛибо <i><u>пересылкой</u></i> постов из них, либо <i><u>вставкой списка</u></i> их названий/ссылок через пробел\n\n"
+            "⏳ Дайджесты по умолчанию будут приходить <i><u>каждый час</u></i>, хочешь поменять - нажми \n⏲️ Установить интервал\n\n"
+            "⚙️ Управление осуществляется кнопками внизу 👇, либо кнопками в <b><i>Меню</i></b>\n"
+        ),
+        parse_mode="HTML"
     )
 
-    # Отправляем сообщение с клавиатурой
-    await callback.message.answer(
-        "Выберите интересующие каналы или добавьте свои:",
-        reply_markup=builder.as_markup()
-    )
+#     await message.answer(text=BOT_DESCRIPTION, reply_markup=kb.greeting_keyboard_inline)
 
-@router.callback_query(lambda c: c.data.startswith("try_select_"), UserStates.try_selecting_channels)
-async def try_select_channel_callback(callback: CallbackQuery, state: FSMContext):
-    """
-    Handles channel selection toggling. Updates the list of selected channels and refreshes the inline keyboard.
 
-    :param callback: CallbackQuery object with data indicating the index of the selected channel.
-    :param state: FSMContext for storing and updating selected channels.
-    :returns: None. Edits the current message to update the selection status.
-    """
-    await callback.answer()
+# @router.callback_query(lambda c: c.data and c.data == "greeting")
+# async def greeting_callback_handler(callback: CallbackQuery):
+#     """
+#        Handles the callback query when the "greeting" button is pressed and sends the first tutorial step.
 
-    # Извлекаем индекс канала:
-    index_str = callback.data[len("try_select_"):]
-    index = int(index_str)
+#        :param callback: CallbackQuery object from the pressed inline button.
+#        :returns: None. Sends a new message with the first tutorial step and corresponding keyboard.
+#     """
 
-    data = await state.get_data()
+#     await callback.answer()
 
-    example_channels = data.get("try_channels", [])
-    selected_indices = data.get("try_selected", [])
+#     # Запускаем обучение: отправляем первый шаг туториала.
+#     step_index = 0
+#     total_steps = len(TUTORIAL_STEPS)
+#     text = TUTORIAL_STEPS[step_index]
+#     keyboard = get_tutorial_keyboard(step_index, total_steps)
 
-    # если этот индекс уже есть в selected_indices - убираем его, иначе добавляем
-    if index in selected_indices:
-        selected_indices.remove(index)
-    else:
-        selected_indices.append(index)
+#     await callback.message.answer(text=text, reply_markup=keyboard, parse_mode="HTML")
 
-    # Обновляем в state
-    await state.update_data(try_selected=selected_indices)
 
-    # Теперь заново строим клавиатуру, помечая выбранные каналы "📌"
-    builder = InlineKeyboardBuilder()
+# def get_tutorial_keyboard(step_index: int, total_steps: int) -> InlineKeyboardMarkup:
+#     """
+#     Generates an inline keyboard for the tutorial navigation with "Back", "Next", and "Try" buttons.
 
-    for i, ch in enumerate(example_channels):
-        if i in selected_indices:
-            # Добавляем "📌" к названию
-            builder.button(
-                text=f"📌 {ch['display_name']}",
-                callback_data=f"try_select_{i}"
-            )
-        else:
-            builder.button(
-                text=ch['display_name'],
-                callback_data=f"try_select_{i}"
-            )
+#     :param step_index: Current step index of the tutorial.
+#     :param total_steps: Total number of tutorial steps.
+#     :returns: InlineKeyboardMarkup object with navigation buttons.
+#     """
 
-    builder.adjust(2)
-    builder.row(
-        InlineKeyboardButton(
-            text="Подтвердить и выслать дайджест",
-            callback_data="try_confirm"
-        )
-    )
-    builder.row(
-        InlineKeyboardButton(
-            text="Добавить свой канал",
-            callback_data="try_add_channel"
-        )
-    )
+#     buttons = []
 
-    # Обновляем предыдущее сообщение
-    await callback.message.edit_text(
-        "Выберите интересующие каналы или добавьте свои:",
-        reply_markup=builder.as_markup()
-    )
+#     # Show '← Назад' if not on the first screen
+#     if step_index > 0:
+#         buttons.append(
+#             InlineKeyboardButton(
+#                 text="← Назад",
+#                 callback_data=f"tutorial_back_{step_index}"
+#             )
+#         )
 
-@router.callback_query(lambda c: c.data == "try_confirm", UserStates.try_selecting_channels)
-async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
-    """
-    Processes the confirmation of selected channels:
-      1. Retrieves selected channel indices from the state.
-      2. Converts them into real channel links.
-      3. Links channels to the user.
-      4. Starts automatic news fetching.
-      5. Sends a success message.
+#     # Show 'Далее →' if not on the last screen
+#     if step_index < total_steps - 1:
+#         buttons.append(
+#             InlineKeyboardButton(
+#                 text="Далее →",
+#                 callback_data=f"tutorial_next_{step_index}"
+#             )
+#         )
+#     # Adding "Try" button
+#     try_button = [InlineKeyboardButton(
+#         text="Попробовать",
+#         callback_data="try"
+#     )]
 
-    :param callback: CallbackQuery object triggered by pressing the confirmation button.
-    :param state: FSMContext containing the current selection and channel data.
-    :returns: None. Performs database operations and starts background news retrieval.
-    """
-    data = await state.get_data()
-    example_channels = data.get("try_channels", [])
-    selected_indices = data.get("try_selected", [])
+#     return InlineKeyboardMarkup(inline_keyboard=[buttons, try_button])
 
-    if not selected_indices:
-        await callback.answer("Вы не выбрали ни одного канала!", show_alert=True)
-        return
 
-    # Собираем реальные ссылки
-    links = [example_channels[i]["link"] for i in selected_indices]
+# @router.callback_query(lambda c: c.data and c.data.startswith("tutorial_next_"))
+# async def tutorial_next_handler(callback: CallbackQuery):
+#     """
+#         Handles the callback query for moving to the next tutorial step.
 
-    # Связываем эти каналы с текущим пользователем
-    user_id = callback.from_user.id
-    addition_timestamp = datetime.now().isoformat()
+#         :param callback: CallbackQuery object containing data with the current step index.
+#         :returns: None. Edits the current message with the next tutorial step text and updated keyboard.
+#     """
 
-    try:
-        channel_ids = await db.fetch_channel_ids(links)
-        if channel_ids:
-            await db.link_user_channels(user_id, channel_ids, addition_timestamp)
-    except Exception as e:
-        logging.error("Ошибка при добавлении каналов из 'Попробовать': %s", e)
-        await callback.message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
-        return
+#     await callback.answer()
 
-    # запускаем получение новостей,
+#     data = callback.data  # e.g. "tutorial_next_0"
+#     current_step = int(data.split("_")[-1])
+#     next_step = current_step + 1
 
-    try:
-        await db.set_user_receiving_news(user_id, True)
-        scraper = TelegramScraper(user_id)
+#     total_steps = len(TUTORIAL_STEPS)
+#     if next_step < total_steps:
+#         new_text = TUTORIAL_STEPS[next_step]
+#         new_kb = get_tutorial_keyboard(next_step, total_steps)
+#         await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
 
-        # Инициализируем клиент Telethon (если не инициализирован)
-        await init_telethon_client()
 
-        if scraper.stop_auto_news_check(user_id):
-            await callback.message.answer("🔄 Перезапускаю фоновую проверку новостей...")
+# @router.callback_query(lambda c: c.data and c.data.startswith("tutorial_back_"))
+# async def tutorial_back_handler(callback: CallbackQuery):
+#     """
+#         Handles the callback query for moving back to the previous tutorial step.
 
-        # по умолчанию interval = 3600, когда новый юзер приходит
-        task = asyncio.create_task(
-            scraper.start_auto_news_check(
-                user_id
-            )
-        )
-        TelegramScraper.running_tasks[user_id] = task
+#         :param callback: CallbackQuery object containing data with the current step index.
+#         :returns: None. Edits the current message with the previous tutorial step text and updated keyboard.
+#     """
 
-        # Сообщим, что фоновые дайджесты запущены
-        await callback.message.answer(
-            "✅ Каналы добавлены и запущена фоновая проверка новостей. "
-            f"Вы будете получать обновления каждые {3600 // 60} минут.",
-            reply_markup=kb.menu
-        )
-    except Exception as e:
-        logging.error("Ошибка при запуске фоновой проверки после try_confirm: %s", e)
-        await callback.message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
-        return
+#     await callback.answer()
 
-    # Сбрасываем состояние FSM
-    await state.clear()
+#     data = callback.data  # e.g. "tutorial_back_2"
+    # current_step = int(data.split("_")[-1])
+    # prev_step = current_step - 1
 
-@router.callback_query(lambda c: c.data == "try_add_channel")
-async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
-    """
-    Handles the callback when the user chooses to add a custom channel.
-    Prompts the user to send a channel link or forward a message from a public channel.
+    # if prev_step >= 0:
+    #     new_text = TUTORIAL_STEPS[prev_step]
+    #     new_kb = get_tutorial_keyboard(prev_step, len(TUTORIAL_STEPS))
+    #     await callback.message.edit_text(new_text, reply_markup=new_kb, parse_mode="HTML")
 
-    :param callback: CallbackQuery object triggered by the "Добавить свой канал" button.
-    :param state: FSMContext (unused in this function, but provided for consistency).
-    :returns: None. Sends a message instructing the user on how to add a channel.
-    """
-    await callback.answer()
-    await callback.message.answer("Хорошо, пришлите ссылку на канал или перешлите пост из открытого канала. \n\n"
-                                  "Для быстрой ориентации пользуйтесь кнопками меню снизу. 👇",
-                                  reply_markup=kb.menu)
+
+# ########################### Добавленная логика "Попробовать" ###########################
+
+# @router.callback_query(lambda c: c.data == "try")
+# async def try_handler(callback: CallbackQuery, state: FSMContext):
+#     """
+#     Handles the "Try" callback by sending a message with a list of example channels for selection.
+
+#     :param callback: CallbackQuery object triggered by the "Try" button.
+#     :param state: FSMContext for storing selected channels.
+#     :returns: None. Sends a message with an inline keyboard of example channels.
+#     """
+
+#     await callback.answer()
+
+#     # Список каналов. Ключ display_name - то, что увидит пользователь на кнопке, link - реальное канал в Telegram
+#     example_channels = [
+#         {"display_name": "РИА", "link": "@rian_ru"},
+#         {"display_name": "Ридовка", "link": "@readovkanews"},
+#         {"display_name": "KarpovCourses",  "link": "@KarpovCourses"},
+#         {"display_name": "Спортс", "link": "@sportsru"},
+#         {"display_name": "Москвач", "link": "@moscowach"},
+#         {"display_name": "GPTMainNews", "link": "@GPTMainNews"},
+#         {"display_name": "Кинопоиск",  "link": "@kinopoisk"},
+    #     {"display_name": "BOGDANISSIMO", "link": "@bogdanisssimo"},
+    # ]
+
+    # # Сохраняем их в state
+    # await state.update_data(try_channels=example_channels, try_selected=[])
+
+    # # Устанавливаем состояние для выбора каналов
+    # await state.set_state(UserStates.try_selecting_channels)
+
+    # builder = InlineKeyboardBuilder()
+
+    # for i, ch in enumerate(example_channels):
+    #     builder.button(
+    #         text=ch["display_name"],
+    #         callback_data=f"try_select_{i}"
+    #     )
+
+    # builder.adjust(2)  # Две кнопки в одной строке
+
+    # # Добавим кнопку подтверждения и кнопку "Добавить свой канал"
+    # builder.row(
+    #     InlineKeyboardButton(
+    #         text="Подтвердить и выслать дайджест",
+    #         callback_data="try_confirm"
+    #     )
+#     )
+#     builder.row(
+#         InlineKeyboardButton(
+#             text="Добавить свой канал",
+#             callback_data="try_add_channel"
+#         )
+#     )
+
+#     # Отправляем сообщение с клавиатурой
+#     await callback.message.answer(
+#         "Выберите интересующие каналы или добавьте свои:",
+#         reply_markup=builder.as_markup()
+#     )
+
+# @router.callback_query(lambda c: c.data.startswith("try_select_"), UserStates.try_selecting_channels)
+# async def try_select_channel_callback(callback: CallbackQuery, state: FSMContext):
+#     """
+#     Handles channel selection toggling. Updates the list of selected channels and refreshes the inline keyboard.
+
+#     :param callback: CallbackQuery object with data indicating the index of the selected channel.
+#     :param state: FSMContext for storing and updating selected channels.
+#     :returns: None. Edits the current message to update the selection status.
+    # """
+    # await callback.answer()
+
+    # # Извлекаем индекс канала:
+    # index_str = callback.data[len("try_select_"):]
+    # index = int(index_str)
+
+    # data = await state.get_data()
+
+    # example_channels = data.get("try_channels", [])
+    # selected_indices = data.get("try_selected", [])
+
+    # # если этот индекс уже есть в selected_indices - убираем его, иначе добавляем
+    # if index in selected_indices:
+    #     selected_indices.remove(index)
+    # else:
+    #     selected_indices.append(index)
+
+    # # Обновляем в state
+    # await state.update_data(try_selected=selected_indices)
+
+    # # Теперь заново строим клавиатуру, помечая выбранные каналы "📌"
+    # builder = InlineKeyboardBuilder()
+
+    # for i, ch in enumerate(example_channels):
+    #     if i in selected_indices:
+    #         # Добавляем "📌" к названию
+    #         builder.button(
+    #             text=f"📌 {ch['display_name']}",
+    #             callback_data=f"try_select_{i}"
+    #         )
+    #     else:
+    #         builder.button(
+    #             text=ch['display_name'],
+    #             callback_data=f"try_select_{i}"
+    #         )
+
+    # builder.adjust(2)
+    # builder.row(
+    #     InlineKeyboardButton(
+    #         text="Подтвердить и выслать дайджест",
+    #         callback_data="try_confirm"
+#         )
+#     )
+#     builder.row(
+#         InlineKeyboardButton(
+#             text="Добавить свой канал",
+#             callback_data="try_add_channel"
+#         )
+#     )
+
+#     # Обновляем предыдущее сообщение
+#     await callback.message.edit_text(
+#         "Выберите интересующие каналы или добавьте свои:",
+#         reply_markup=builder.as_markup()
+#     )
+
+# @router.callback_query(lambda c: c.data == "try_confirm", UserStates.try_selecting_channels)
+# async def try_confirm_callback(callback: CallbackQuery, state: FSMContext):
+#     """
+#     Processes the confirmation of selected channels:
+#       1. Retrieves selected channel indices from the state.
+#       2. Converts them into real channel links.
+#       3. Links channels to the user.
+#       4. Starts automatic news fetching.
+#       5. Sends a success message.
+
+    # :param callback: CallbackQuery object triggered by pressing the confirmation button.
+    # :param state: FSMContext containing the current selection and channel data.
+    # :returns: None. Performs database operations and starts background news retrieval.
+    # """
+    # data = await state.get_data()
+    # example_channels = data.get("try_channels", [])
+    # selected_indices = data.get("try_selected", [])
+
+    # if not selected_indices:
+    #     await callback.answer("Вы не выбрали ни одного канала!", show_alert=True)
+    #     return
+
+    # # Собираем реальные ссылки
+    # links = [example_channels[i]["link"] for i in selected_indices]
+
+    # # Связываем эти каналы с текущим пользователем
+    # user_id = callback.from_user.id
+    # addition_timestamp = datetime.now().isoformat()
+
+    # try:
+    #     channel_ids = await db.fetch_channel_ids(links)
+    #     if channel_ids:
+    #         await db.link_user_channels(user_id, channel_ids, addition_timestamp)
+    # except Exception as e:
+    #     logging.error("Ошибка при добавлении каналов из 'Попробовать': %s", e)
+    #     await callback.message.answer("Произошла ошибка при добавлении каналов. Попробуйте позже.")
+    #     return
+
+    # # запускаем получение новостей,
+
+    # try:
+    #     await db.set_user_receiving_news(user_id, True)
+    #     scraper = TelegramScraper(user_id)
+
+    #     # Инициализируем клиент Telethon (если не инициализирован)
+    #     await init_telethon_client()
+
+    #     if scraper.stop_auto_news_check(user_id):
+    #         await callback.message.answer("🔄 Перезапускаю фоновую проверку новостей...")
+
+    #     # по умолчанию interval = 3600, когда новый юзер приходит
+    #     task = asyncio.create_task(
+    #         scraper.start_auto_news_check(
+    #             user_id
+    #         )
+    #     )
+    #     TelegramScraper.running_tasks[user_id] = task
+
+#         # Сообщим, что фоновые дайджесты запущены
+#         await callback.message.answer(
+#             "✅ Каналы добавлены и запущена фоновая проверка новостей. "
+#             f"Вы будете получать обновления каждые {3600 // 60} минут.",
+#             reply_markup=kb.menu
+#         )
+#     except Exception as e:
+#         logging.error("Ошибка при запуске фоновой проверки после try_confirm: %s", e)
+#         await callback.message.answer("❌ Произошла ошибка при запуске проверки новостей. Попробуйте позже.")
+#         return
+
+#     # Сбрасываем состояние FSM
+#     await state.clear()
+
+# @router.callback_query(lambda c: c.data == "try_add_channel")
+# async def try_add_channel_callback(callback: CallbackQuery, state: FSMContext):
+#     """
+#     Handles the callback when the user chooses to add a custom channel.
+#     Prompts the user to send a channel link or forward a message from a public channel.
+
+    # :param callback: CallbackQuery object triggered by the "Добавить свой канал" button.
+    # :param state: FSMContext (unused in this function, but provided for consistency).
+    # :returns: None. Sends a message instructing the user on how to add a channel.
+    # """
+    # await callback.answer()
+    # await callback.message.answer("Хорошо, пришлите ссылку на канал или перешлите пост из открытого канала. \n\n"
+    #                               "Для быстрой ориентации пользуйтесь кнопками меню снизу. 👇",
+    #                               reply_markup=kb.menu)
 
 
 ############################## set_interval - интервал для получения дайджестов  #####################
@@ -524,7 +549,7 @@ async def start_comment(message: Message, state: FSMContext):
 async def save_comment(message: Message, state: FSMContext):
     # Для отмены
     if message.text and message.text.startswith('/'):
-        await message.answer("отменили 👌")
+        await message.answer("Вы отменили отправку комментария 👌")
         await state.clear()
         return
 
@@ -565,11 +590,11 @@ async def save_comment(message: Message, state: FSMContext):
             )
 
         await message.answer("✅ Ваш комментарий отправлен команде!")
-        
+
     except Exception as e:
-        logging.error(f"Ошибка пересылки: {str(e)}")
+        logging.error("Ошибка пересылки: %s", e)
         await message.answer("❌ Не удалось отправить комментарий")
-        
+
     await state.clear()
 
 
@@ -814,7 +839,7 @@ async def process_cancel_delete_all_callback(callback: CallbackQuery, state: FSM
 
 ############################## receive_news - Получить сводки новостей ############
 ## Реагиуем на кнопку "Получить новости" в inline-клавиатуре
-@router.message(F.text == "⭐️ Получать новости")
+@router.message(F.text == "⭐️ Получать дайджесты")
 async def handle_receive_news_btn(message: Message, state: FSMContext):
     # Reuse /receive_news logic:
     await receive_news_handler(message, state)
@@ -846,7 +871,7 @@ async def receive_news_handler(message: Message, state: FSMContext):
 
 ############################## stop_news Остановить получение сводки новостей #################
 
-@router.message(F.text == "🛑 Остановить новости")
+@router.message(F.text == "🛑 Остановить дайджесты")
 async def handle_stop_news_btn(message: Message, state: FSMContext):
     # Reuse /stop_news logic:
     await stop_news_handler(message, state)
@@ -861,8 +886,8 @@ async def stop_news_handler(message: Message, state: FSMContext):
     await db.set_user_receiving_news(user_id, False)
     scraper.stop_auto_news_check(user_id)
     await message.answer(
-        "Вы остановили получение новостей. "
-        "Для повторного получения новостей нажмите на кнопку <b>Получить новости</b>", parse_mode="HTML"
+        "Вы остановили получение дайджестов.\n\n"
+        "Для повторной активации нажмите кнопку <b>⭐️Получать дайджесты</b>", parse_mode="HTML"
     )
 
 
@@ -1034,7 +1059,7 @@ async def process_other_messages(message: Message, state: FSMContext):
                              "Перешлите пост из канала)\n\n"
                              "А если вы хотите добавить чат канала, то пришлите ссылку чата или ссылку любого сообщения из чата")
         return
-    
+
         # Если юзер сел попой на телефон
     if  message.text and not message.text.startswith('/'):
         # Если неизвестная команды или текст или пересылка из лички
@@ -1048,7 +1073,7 @@ async def process_other_messages(message: Message, state: FSMContext):
             "/show_channels   - 📋 показать список ваших каналов\n"
         )
         return
-    
+
     # Резервная обработка для всех остальных случаев
     await message.answer("Неизвестная команда. Используйте меню.")
 
@@ -1069,7 +1094,8 @@ async def _restart_news_check(user_id: int, interval_sec: int, message: Message)
         # Создаем новую задачу с актуальным интервалом
         task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval_sec))
         TelegramScraper.running_tasks[user_id] = task
-        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.")
+        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.\n\n"
+                             "Вы получите дайджест в ближайште 5 минут.")
 
     except Exception as e:
         await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
