@@ -1069,7 +1069,8 @@ async def _restart_news_check(user_id: int, interval_sec: int, message: Message)
         # Создаем новую задачу с актуальным интервалом
         task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval_sec))
         TelegramScraper.running_tasks[user_id] = task
-        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.")
+        await message.answer(f"✅ Проверка новостей запущена. Интервал: {interval_sec // 60} мин.\n\n"
+                             "Вы получите дайджест в ближайште 5 минут.")
 
     except Exception as e:
         await message.answer("❌ Ошибка при перезапуске. Попробуйте позже.")
