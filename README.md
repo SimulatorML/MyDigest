@@ -70,6 +70,11 @@ A news aggregator bot that provides users with personalized, concise daily diges
 3) `src` - код проекта
 3) `test` - тесты
 
+## Project media files
+ 
+ Google drive: https://drive.google.com/drive/folders/1c7mW2ya2pvmrnQ8miRANl7E_TuIiYxuP?usp=share_link
+
+
 ## The main tools used in the project
 
 ![Python](https://img.shields.io/badge/Python_3.12-FFFFFF?style=for-the-badge&logo=python&logoColor=306998&color=000000)
