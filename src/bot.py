@@ -38,6 +38,7 @@ class DigestBot:
 
     async def _on_startup(self, bot: Bot):
         try:
+            active_users = await db.retrieve_current_users()
             await bot.delete_my_commands()
         except TelegramRetryAfter as e:
             logging.warning(f"Flood control, sleeping {e.retry_after} seconds")
