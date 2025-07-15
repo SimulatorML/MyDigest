@@ -14,7 +14,7 @@ db = SupabaseDB(supabase)
 class DigestBot:
     def __init__(self):
         # Initialize bot and dispatcher
-        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN, timeout=60)
         self.dp = Dispatcher(storage=MemoryStorage())
 
         # Register routers
@@ -44,6 +44,7 @@ class DigestBot:
         """
         active_users = await db.retrieve_current_users()
         await bot.delete_my_commands()
+        await asyncio.sleep(5)
         await bot.set_my_commands(commands=ALL_COMMANDS)
         logging.info("Bot started successfully")
 
