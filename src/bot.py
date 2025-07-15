@@ -15,7 +15,7 @@ db = SupabaseDB(supabase)
 class DigestBot:
     def __init__(self):
         # Initialize bot and dispatcher
-        self.bot = Bot(token=TELEGRAM_BOT_TOKEN, timeout=60)
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
         self.dp = Dispatcher(storage=MemoryStorage())
 
         # Register routers
@@ -37,22 +37,26 @@ class DigestBot:
             await self.bot.session.close()
 
     async def _on_startup(self, bot: Bot):
-        try:
-            active_users = await db.retrieve_current_users()
-            await bot.delete_my_commands()
-        except TelegramRetryAfter as e:
-            logging.warning(f"Flood control, sleeping {e.retry_after} seconds")
-            await asyncio.sleep(e.retry_after)
-            await bot.delete_my_commands()
-        
-        await asyncio.sleep(1)
-        
-        try:
-            await bot.set_my_commands(commands=ALL_COMMANDS)
-        except TelegramRetryAfter as e:
-            logging.warning(f"Flood control, sleeping {e.retry_after} seconds")
-            await asyncio.sleep(e.retry_after)
-            await bot.set_my_commands(commands=ALL_COMMANDS)
+        """
+        This is called when the bot starts up
+        When the bot starts up, it retrieves users who are currently receiving news.
+        It automatically starts the scraper once the bot is relaunched.
+        """
+        active_users = await db.retrieve_current_users()
+        await bot.delete_my_commands()
+        await bot.set_my_commands(commands=ALL_COMMANDS)
+        logging.info("Bot started successfully")
+
+        await init_telethon_client()
+        if active_users:
+            for user in active_users.data:
+                user_id = user["user_id"]
+                interval = await db.get_user_interval(user_id)  # Получаем интервал из БД
+                scraper = TelegramScraper(user_id)
+                task = asyncio.create_task(scraper.start_auto_news_check(user_id, interval=interval))
+                TelegramScraper.running_tasks[user_id] = task
+
+        logging.info("Bot started successfully and tasks re-launched for active users")
 
         await init_telethon_client()
         if active_users:
