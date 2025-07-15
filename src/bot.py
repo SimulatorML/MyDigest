@@ -8,6 +8,7 @@ from src.handlers.channels import router as channels_router
 from src.data.database import supabase, SupabaseDB
 from src.scraper import TelegramScraper, init_telethon_client, close_telethon_client
 # import src.handlers.keyboards as kb
+from aiogram.exceptions import TelegramRetryAfter
 
 db = SupabaseDB(supabase)
 
@@ -24,16 +25,22 @@ class DigestBot:
         """Start the bot"""
         asyncio.run(self._start_polling())
 
-    async def _start_polling(self):
-        self.dp.startup.register(self._on_startup)
-        self.dp.shutdown.register(self._on_shutdown)
+    async def _on_startup(self, bot: Bot):
         try:
-            await self.dp.start_polling(self.bot)
-        except Exception as e:
-            logging.error("Error during bot startup: %s", e)
-            raise
-        finally:
-            await self.bot.session.close()
+            await bot.delete_my_commands()
+        except TelegramRetryAfter as e:
+            logging.warning(f"Flood control, sleeping {e.retry_after} seconds")
+            await asyncio.sleep(e.retry_after)
+            await bot.delete_my_commands()
+        
+        await asyncio.sleep(1)
+        
+        try:
+            await bot.set_my_commands(commands=ALL_COMMANDS)
+        except TelegramRetryAfter as e:
+            logging.warning(f"Flood control, sleeping {e.retry_after} seconds")
+            await asyncio.sleep(e.retry_after)
+            await bot.set_my_commands(commands=ALL_COMMANDS)
 
 
     async def _on_startup(self, bot: Bot):
