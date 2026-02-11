@@ -5,7 +5,7 @@ from typing import List, Dict, Union
 import random
 
 class Summarization:
-    def __init__(self, api_key: str, model: str = "mistral-large-latest") -> None:
+    def __init__(self, api_key: str, model: str = "mistral-medium-latest") -> None:
         self.api_key = api_key
         self.model = model
 
@@ -33,7 +33,7 @@ class Summarization:
                         retry_delay *= 2  # Увеличиваем задержку экспоненциально
                     else:
                         raise
-                raise Exception("Max retries exceeded")
+            raise Exception("Max retries exceeded")
 
     async def summarize_news_items(self, news: List[Dict[str, Union[str, int]]]) -> str:
         """
@@ -44,6 +44,7 @@ class Summarization:
               'channel': channel name (without the '@')
               'message': text of the news
               'message_id': unique id of the message
+              'channel_title': title of the channel
             }
         :returns: A formatted summary string with links to the original news items.
         """
@@ -99,7 +100,7 @@ class Summarization:
             logging.error("Error during clustering: %s", e)
             return "Failed to produce the final digest."
 
-    async def determine_channel_topic(self, messages: List[Dict[str, Union[str, int]]]) -> List[str]:
+    async def determine_channel_topic(self, messages: List[Dict[str, Union[str, int]]]) -> Union[List[str], str]:
         """
         Determines channel topics based on recent posts.
 
